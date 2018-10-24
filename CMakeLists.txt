@@ -22,6 +22,7 @@ include(ExternalProject)
 #the following variables are project-wide and can be used with cmake-gui
 option(run_unittests "set run_unittests to ON to run unittests (default is OFF)" OFF)
 option(run_e2e_tests "set run_e2e_tests to ON to run e2e tests (default is OFF)" OFF)
+option(run_int_tests "set run_int_tests to ON to run integration tests (default is OFF)" OFF)
 option(skip_samples "set skip_samples to ON to skip building samples (default is OFF)[if possible, they are always built]" OFF)
 option(use_installed_dependencies "set use_installed_dependencies to ON to use installed packages instead of building dependencies from submodules" OFF)
 option(use_custom_heap "use externally defined heap functions instead of the malloc family" OFF)
@@ -39,13 +40,15 @@ endif ()
 #do not add or build any tests of the dependencies
 set(original_run_e2e_tests ${run_e2e_tests})
 set(original_run_unittests ${run_unittests})
+set(original_run_unittests ${run_int_tests})
 
 set(run_e2e_tests OFF)
 set(run_unittests OFF)
+set(run_int_tests OFF)
 
 include("dependencies.cmake")
 
-if (${original_run_e2e_tests} OR ${original_run_unittests})
+if (${original_run_e2e_tests} OR ${original_run_unittests} OR ${original_run_unittests})
     set(SHARED_UTIL_REAL_TEST_FOLDER ${CMAKE_CURRENT_LIST_DIR}/deps/c-utility/tests/real_test_files CACHE INTERNAL "this is what needs to be included when doing test sources" FORCE)
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/deps/c-utility/testtools)
 endif ()
@@ -55,6 +58,7 @@ set_platform_files(${CMAKE_CURRENT_LIST_DIR}/deps/c-utility)
 
 set(run_e2e_tests ${original_run_e2e_tests})
 set(run_unittests ${original_run_unittests})
+set(run_int_tests ${original_run_unittests})
 
 #these are the C source files
 set(source_c_files

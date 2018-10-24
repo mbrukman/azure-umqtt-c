@@ -15,10 +15,15 @@ set(${theseTestsName}_c_files
     ../../src/mqtt_codec.c
     ../../src/mqtt_message.c
     ${SHARED_UTIL_SRC_FOLDER}/strings.c
-    ${SHARED_UTIL_ADAPTER_FOLDER}/linux_time.c
     ${TICKCOUTER_C_FILE}
     ${SHARED_UTIL_SRC_FOLDER}/buffer.c
 )
+
+if (NOT WIN32)
+    set(${theseTestsName}_c_files
+        ${SHARED_UTIL_ADAPTER_FOLDER}/linux_time.c
+    )
+endif()
 
 set(${theseTestsName}_h_files
 )
