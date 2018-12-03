@@ -80,11 +80,12 @@ static void OnOperationComplete(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_RES
             subscribe[1].subscribeTopic = TOPIC_NAME_B;
             subscribe[1].qosReturn = DELIVER_EXACTLY_ONCE;
 
-            if (mqtt_client_subscribe(handle, PACKET_ID_VALUE++, subscribe, sizeof(subscribe) / sizeof(subscribe[0])) != 0)
+            /*if (mqtt_client_subscribe(handle, PACKET_ID_VALUE++, subscribe, sizeof(subscribe) / sizeof(subscribe[0])) != 0)
             {
                 (void)printf("%d: mqtt_client_subscribe failed\r\n", __LINE__);
                 g_continue = false;
-            }
+            }*/
+            mqtt_client_disconnect(handle, NULL, NULL);
             break;
         }
         case MQTT_CLIENT_ON_SUBSCRIBE_ACK:
@@ -166,14 +167,14 @@ void mqtt_client_sample_run()
     }
     else
     {
-        MQTT_CLIENT_HANDLE mqttHandle = mqtt_client_init(OnRecvCallback, OnOperationComplete, NULL, OnErrorComplete, NULL);
+        MQTT_CLIENT_HANDLE mqttHandle = mqtt_client_init(MQTT_VERSION_3x, OnRecvCallback, OnOperationComplete, NULL, OnErrorComplete, NULL);
         if (mqttHandle == NULL)
         {
             (void)printf("mqtt_client_init failed\r\n");
         }
         else
         {
-            mqtt_client_set_trace(mqttHandle, false, false);
+            mqtt_client_set_trace(mqttHandle, true, false);
 
             MQTT_CLIENT_OPTIONS options = { 0 };
             options.clientId = "azureiotclient";
