@@ -476,7 +476,6 @@ static int constructConnPayload(MQTTCODEC_INSTANCE* mqtt_codec, BUFFER_HANDLE ct
             }
             else
             {
-                STRING_HANDLE connect_payload_trace = NULL;
                 if (willMessageLen > 0 && willTopicLen > 0)
                 {
                     if (mqtt_codec->trace_func != NULL)
@@ -617,6 +616,7 @@ static MQTT_CODEC_HANDLE codec_v3_create(ON_PACKET_COMPLETE_CALLBACK packetCompl
     /* Codes_SRS_MQTT_CODEC_07_001: [If a failure is encountered then mqtt_codec_create shall return NULL.] */
     if (result != NULL)
     {
+        memset(result, 0, sizeof(MQTTCODEC_INSTANCE));
         /* Codes_SRS_MQTT_CODEC_07_002: [On success mqtt_codec_create shall return a MQTTCODEC_HANDLE value.] */
         result->currPacket = UNKNOWN_TYPE;
         result->codecState = CODEC_STATE_FIXED_HEADER;
@@ -627,7 +627,6 @@ static MQTT_CODEC_HANDLE codec_v3_create(ON_PACKET_COMPLETE_CALLBACK packetCompl
         result->headerData = NULL;
         memset(result->storeRemainLen, 0, 4 * sizeof(uint8_t));
         result->remainLenIndex = 0;
-
     }
     return (MQTT_CODEC_HANDLE)result;
 }
@@ -644,12 +643,13 @@ static void codec_v3_destroy(MQTT_CODEC_HANDLE handle)
     }
 }
 
-static BUFFER_HANDLE mqtt_codec_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions)
+static BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_008: [If the parameters mqttOptions is NULL then mqtt_codec_connect shall return a null value.] */
     if (mqttOptions == NULL || handle == NULL)
     {
+        LogError("Invalid argument specified: mqttOptions: %p, handle: %p", mqttOptions, handle);
         result = NULL;
     }
     else
@@ -666,6 +666,7 @@ static BUFFER_HANDLE mqtt_codec_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLI
             // Add Variable Header Information
             if (constructConnectVariableHeader(mqtt_codec, result, mqttOptions) != 0)
             {
+                LogError("Invalid argument specified: mqttOptions: %p, handle: %p", mqttOptions, handle);
                 /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
                 BUFFER_delete(result);
                 result = NULL;
@@ -696,8 +697,9 @@ static BUFFER_HANDLE mqtt_codec_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLI
     return result;
 }
 
-static BUFFER_HANDLE mqtt_codec_disconnect(MQTT_CODEC_HANDLE handle)
+static BUFFER_HANDLE codec_v3_disconnect(MQTT_CODEC_HANDLE handle)
 {
+    (void)handle;
     /* Codes_SRS_MQTT_CODEC_07_011: [On success mqtt_codec_disconnect shall construct a BUFFER_HANDLE that represents a MQTT DISCONNECT packet.] */
     BUFFER_HANDLE result = BUFFER_new();
     if (result != NULL)
@@ -1036,77 +1038,73 @@ BUFFER_HANDLE mqtt_codec_unsubscribe(uint16_t packetId, const char** unsubscribe
     return result;
 }
 
-int mqtt_codec_bytesReceived(MQTTCODEC_HANDLE handle, const unsigned char* buffer, size_t size)
+static void on_bytes_recv(void* context, const unsigned char* buffer, size_t size)
 {
-    int result;
-    MQTTCODEC_INSTANCE* codec_Data = (MQTTCODEC_INSTANCE*)handle;
-    /* Codes_SRS_MQTT_CODEC_07_031: [If the parameters handle or buffer is NULL then mqtt_codec_bytesReceived shall return a non-zero value.] */
-    if (codec_Data == NULL)
+    MQTTCODEC_INSTANCE* codec_data = (MQTTCODEC_INSTANCE*)context;
+    if (codec_data == NULL)
     {
-        result = __FAILURE__;
     }
-    /* Codes_SRS_MQTT_CODEC_07_031: [If the parameters handle or buffer is NULL then mqtt_codec_bytesReceived shall return a non-zero value.] */
-    /* Codes_SRS_MQTT_CODEC_07_032: [If the parameters size is zero then mqtt_codec_bytesReceived shall return a non-zero value.] */
     else if (buffer == NULL || size == 0)
     {
-        codec_Data->currPacket = PACKET_TYPE_ERROR;
-        result = __FAILURE__;
+        LogError("Invalid parameters buffer: %p, size: %ul", buffer, (unsigned int)size);
+        codec_data->currPacket = PACKET_TYPE_ERROR;
+        // Set Error callback
     }
     else
     {
+        bool is_error = false;
         /* Codes_SRS_MQTT_CODEC_07_033: [mqtt_codec_bytesReceived constructs a sequence of bytes into the corresponding MQTT packets and on success returns zero.] */
-        result = 0;
         size_t index = 0;
-        for (index = 0; index < size && result == 0; index++)
+        for (index = 0; index < size && !is_error; index++)
         {
             uint8_t iterator = ((int8_t*)buffer)[index];
-            if (codec_Data->codecState == CODEC_STATE_FIXED_HEADER)
+            if (codec_data->codecState == CODEC_STATE_FIXED_HEADER)
             {
-                if (codec_Data->currPacket == UNKNOWN_TYPE)
+                if (codec_data->currPacket == UNKNOWN_TYPE)
                 {
-                    codec_Data->currPacket = processControlPacketType(iterator, &codec_Data->headerFlags);
+                    codec_data->currPacket = processControlPacketType(iterator, &codec_data->headerFlags);
                 }
                 else
                 {
-                    if (prepareheaderDataInfo(codec_Data, iterator) != 0)
+                    if (prepareheaderDataInfo(codec_data, iterator) != 0)
                     {
                         /* Codes_SRS_MQTT_CODEC_07_035: [If any error is encountered then the packet state will be marked as error and mqtt_codec_bytesReceived shall return a non-zero value.] */
-                        codec_Data->currPacket = PACKET_TYPE_ERROR;
-                        result = __FAILURE__;
+                        codec_data->currPacket = PACKET_TYPE_ERROR;
+                        is_error = true;
                     }
-                    if (codec_Data->currPacket == PINGRESP_TYPE)
+                    if (codec_data->currPacket == PINGRESP_TYPE)
                     {
                         /* Codes_SRS_MQTT_CODEC_07_034: [Upon a constructing a complete MQTT packet mqtt_codec_bytesReceived shall call the ON_PACKET_COMPLETE_CALLBACK function.] */
-                        completePacketData(codec_Data);
+                        completePacketData(codec_data);
                     }
                 }
             }
-            else if (codec_Data->codecState == CODEC_STATE_VAR_HEADER)
+            else if (codec_data->codecState == CODEC_STATE_VAR_HEADER)
             {
-                if (codec_Data->headerData == NULL)
+                if (codec_data->headerData == NULL)
                 {
-                    codec_Data->codecState = CODEC_STATE_PAYLOAD;
+                    codec_data->codecState = CODEC_STATE_PAYLOAD;
                 }
                 else
                 {
-                    uint8_t* dataBytes = BUFFER_u_char(codec_Data->headerData);
+                    uint8_t* dataBytes = BUFFER_u_char(codec_data->headerData);
                     if (dataBytes == NULL)
                     {
                         /* Codes_SRS_MQTT_CODEC_07_035: [If any error is encountered then the packet state will be marked as error and mqtt_codec_bytesReceived shall return a non-zero value.] */
-                        codec_Data->currPacket = PACKET_TYPE_ERROR;
-                        result = __FAILURE__;
+                        codec_data->currPacket = PACKET_TYPE_ERROR;
+                        is_error = true;
                     }
                     else
                     {
                         // Increment the data
-                        dataBytes += codec_Data->bufferOffset++;
+                        dataBytes += codec_data->bufferOffset++;
                         *dataBytes = iterator;
 
-                        size_t totalLen = BUFFER_length(codec_Data->headerData);
-                        if (codec_Data->bufferOffset >= totalLen)
+                        size_t totalLen = BUFFER_length(codec_data->headerData);
+                        if (codec_data->bufferOffset >= totalLen)
                         {
                             /* Codes_SRS_MQTT_CODEC_07_034: [Upon a constructing a complete MQTT packet mqtt_codec_bytesReceived shall call the ON_PACKET_COMPLETE_CALLBACK function.] */
-                            completePacketData(codec_Data);
+                            completePacketData(codec_data);
                         }
                     }
                 }
@@ -1114,12 +1112,11 @@ int mqtt_codec_bytesReceived(MQTTCODEC_HANDLE handle, const unsigned char* buffe
             else
             {
                 /* Codes_SRS_MQTT_CODEC_07_035: [If any error is encountered then the packet state will be marked as error and mqtt_codec_bytesReceived shall return a non-zero value.] */
-                codec_Data->currPacket = PACKET_TYPE_ERROR;
-                result = __FAILURE__;
+                codec_data->currPacket = PACKET_TYPE_ERROR;
+                is_error = true;
             }
         }
     }
-    return result;
 }
 
 static int codec_v3_set_trace(MQTT_CODEC_HANDLE handle, TRACE_LOG_VALUE trace_func, void* trace_ctx)
@@ -1139,24 +1136,29 @@ static int codec_v3_set_trace(MQTT_CODEC_HANDLE handle, TRACE_LOG_VALUE trace_fu
     return result;
 }
 
+ON_BYTES_RECEIVED codec_v3_get_recv_func(void)
+{
+    return on_bytes_recv;
+}
+
 static CODEC_PROVIDER codec_provider = 
 {
     codec_v3_create,
     codec_v3_destroy,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    codec_v3_set_trace
-    /*codec_v3_connect,
+    codec_v3_connect,
     codec_v3_disconnect,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    codec_v3_get_recv_func,
+    codec_v3_set_trace
+    /*,
+    ,
     codec_v3_publish,
     codec_v3_publishAck,
     codec_v3_publishReceived,
@@ -1165,7 +1167,7 @@ static CODEC_PROVIDER codec_provider =
     codec_v3_ping,
     codec_v3_subscribe,
     codec_v3_unsubscribe,
-    codec_v3_get_recv_func*/
+    */
 };
 
 const CODEC_PROVIDER* mqtt_codec_v3_get_provider(void)

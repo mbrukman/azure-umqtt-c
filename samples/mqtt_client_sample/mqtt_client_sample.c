@@ -6,7 +6,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "mqtt_client_sample.h"
 #include "azure_umqtt_c/mqtt_client.h"
 #include "azure_c_shared_utility/socketio.h"
 #include "azure_c_shared_utility/platform.h"
@@ -159,7 +158,7 @@ static void OnErrorComplete(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_ERROR e
     }
 }
 
-void mqtt_client_sample_run()
+int main(void)
 {
     if (platform_init() != 0)
     {
@@ -218,4 +217,8 @@ void mqtt_client_sample_run()
         }
         platform_deinit();
     }
+
+    printf("Press Enter to close.");
+    getchar();
+    return 0;
 }

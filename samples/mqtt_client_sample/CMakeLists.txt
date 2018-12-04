@@ -5,14 +5,7 @@ set(mqtt_client_sample_c_files
     mqtt_client_sample.c
 )
 
-if(WIN32)
-    set(mqtt_client_sample_c_files ${mqtt_client_sample_c_files} ./windows/main.c)
-else()
-    set(mqtt_client_sample_c_files ${mqtt_client_sample_c_files} ./linux/main.c)
-endif()
-
 set(mqtt_client_sample_h_files
-    mqtt_client_sample.h
 )
 
 IF(WIN32)

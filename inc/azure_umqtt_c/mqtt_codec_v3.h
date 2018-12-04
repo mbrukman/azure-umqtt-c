@@ -36,8 +36,6 @@ MOCKABLE_FUNCTION(, BUFFER_HANDLE, mqtt_codec_ping);
 MOCKABLE_FUNCTION(, BUFFER_HANDLE, mqtt_codec_subscribe, uint16_t, packetId, SUBSCRIBE_PAYLOAD*, subscribeList, size_t, count, STRING_HANDLE, trace_log);
 MOCKABLE_FUNCTION(, BUFFER_HANDLE, mqtt_codec_unsubscribe, uint16_t, packetId, const char**, unsubscribeList, size_t, count, STRING_HANDLE, trace_log);
 
-MOCKABLE_FUNCTION(, int, mqtt_codec_bytesReceived, MQTTCODEC_HANDLE, handle, const unsigned char*, buffer, size_t, size);
-
 extern const CODEC_PROVIDER* mqtt_codec_v3_get_provider(void);
 
 #ifdef __cplusplus

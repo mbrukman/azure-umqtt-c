@@ -76,12 +76,14 @@ static void on_bytes_recv(void* context, const unsigned char* buffer, size_t siz
     }
     else
     {
-        CODEC_V5_INSTANCE* codec_data = (CODEC_V5_INSTANCE*)context;
+        //CODEC_V5_INSTANCE* codec_data = (CODEC_V5_INSTANCE*)context;
     }
 }
 
-static MQTT_CODEC_HANDLE codec_v5_create(ON_PACKET_COMPLETE_CALLBACK packetComplete, void* callbackCtx)
+static MQTT_CODEC_HANDLE codec_v5_create(ON_PACKET_COMPLETE_CALLBACK on_packet_complete_cb, void* context)
 {
+    (void)on_packet_complete_cb;
+    (void)context;
     CODEC_V5_INSTANCE* result;
     if ((result = malloc(sizeof(CODEC_V5_INSTANCE))) == NULL)
     {
@@ -123,6 +125,7 @@ BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIO
 
 BUFFER_HANDLE codec_v5_disconnect(MQTT_CODEC_HANDLE handle)
 {
+    (void)handle;
     /* Codes_SRS_MQTT_CODEC_07_011: [On success codec_v5_disconnect shall construct a BUFFER_HANDLE that represents a MQTT DISCONNECT packet.] */
     BUFFER_HANDLE result = BUFFER_new();
     if (result != NULL)
@@ -133,6 +136,14 @@ BUFFER_HANDLE codec_v5_disconnect(MQTT_CODEC_HANDLE handle)
 
 BUFFER_HANDLE codec_v5_publish(QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen, STRING_HANDLE trace_log)
 {
+    (void)qosValue;
+    (void)duplicateMsg;
+    (void)serverRetain;
+    (void)packetId;
+    (void)topicName;
+    (void)msgBuffer;
+    (void)buffLen;
+    (void)trace_log;
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_005: [If the parameters topicName is NULL then codec_v5_publish shall return NULL.] */
     if (topicName == NULL)
@@ -147,12 +158,14 @@ BUFFER_HANDLE codec_v5_publish(QOS_VALUE qosValue, bool duplicateMsg, bool serve
     }
     else
     {
+        result = 0;
     }
     return result;
 }
 
 BUFFER_HANDLE codec_v5_publishAck(uint16_t packetId)
 {
+    (void)packetId;
     /* Codes_SRS_MQTT_CODEC_07_013: [On success codec_v5_publishAck shall return a BUFFER_HANDLE representation of a MQTT PUBACK packet.] */
     /* Codes_SRS_MQTT_CODEC_07_014 : [If any error is encountered then codec_v5_publishAck shall return NULL.] */
     BUFFER_HANDLE result = NULL;//constructPublishReply(PUBACK_TYPE, 0, packetId);
@@ -161,6 +174,7 @@ BUFFER_HANDLE codec_v5_publishAck(uint16_t packetId)
 
 BUFFER_HANDLE codec_v5_publishReceived(uint16_t packetId)
 {
+    (void)packetId;
     /* Codes_SRS_MQTT_CODEC_07_015: [On success codec_v5_publishRecieved shall return a BUFFER_HANDLE representation of a MQTT PUBREC packet.] */
     /* Codes_SRS_MQTT_CODEC_07_016 : [If any error is encountered then codec_v5_publishRecieved shall return NULL.] */
     BUFFER_HANDLE result = NULL;//constructPublishReply(PUBREC_TYPE, 0, packetId);
@@ -169,6 +183,7 @@ BUFFER_HANDLE codec_v5_publishReceived(uint16_t packetId)
 
 BUFFER_HANDLE codec_v5_publishRelease(uint16_t packetId)
 {
+    (void)packetId;
     /* Codes_SRS_MQTT_CODEC_07_017: [On success codec_v5_publishRelease shall return a BUFFER_HANDLE representation of a MQTT PUBREL packet.] */
     /* Codes_SRS_MQTT_CODEC_07_018 : [If any error is encountered then codec_v5_publishRelease shall return NULL.] */
     BUFFER_HANDLE result = NULL;//constructPublishReply(PUBREL_TYPE, 2, packetId);
@@ -177,6 +192,7 @@ BUFFER_HANDLE codec_v5_publishRelease(uint16_t packetId)
 
 BUFFER_HANDLE codec_v5_publishComplete(uint16_t packetId)
 {
+    (void)packetId;
     /* Codes_SRS_MQTT_CODEC_07_019: [On success codec_v5_publishComplete shall return a BUFFER_HANDLE representation of a MQTT PUBCOMP packet.] */
     /* Codes_SRS_MQTT_CODEC_07_020 : [If any error is encountered then codec_v5_publishComplete shall return NULL.] */
     BUFFER_HANDLE result = NULL;//constructPublishReply(PUBCOMP_TYPE, 0, packetId);
@@ -195,6 +211,10 @@ BUFFER_HANDLE codec_v5_ping(void)
 
 BUFFER_HANDLE codec_v5_subscribe(uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count, STRING_HANDLE trace_log)
 {
+    (void)packetId;
+    (void)subscribeList;
+    (void)count;
+    (void)trace_log;
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_023: [If the parameters subscribeList is NULL or if count is 0 then codec_v5_subscribe shall return NULL.] */
     if (subscribeList == NULL || count == 0)
@@ -214,6 +234,10 @@ BUFFER_HANDLE codec_v5_subscribe(uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribe
 
 BUFFER_HANDLE codec_v5_unsubscribe(uint16_t packetId, const char** unsubscribeList, size_t count, STRING_HANDLE trace_log)
 {
+    (void)packetId;
+    (void)unsubscribeList;
+    (void)count;
+    (void)trace_log;
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_027: [If the parameters unsubscribeList is NULL or if count is 0 then mqtt_codec_unsubscribe shall return NULL.] */
     if (unsubscribeList == NULL || count == 0)

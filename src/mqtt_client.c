@@ -402,7 +402,7 @@ static void onOpenComplete(void* context, IO_OPEN_RESULT open_result)
             mqtt_client->socketConnected = true;
 
             // Send the Connect packet
-            BUFFER_HANDLE connPacket = mqtt_client->codec_provider->mqtt_codec_connect(mqtt_client->codec_handle, &mqtt_client->mqttOptions);
+            BUFFER_HANDLE connPacket = mqtt_client->codec_provider->mqtt_codec_connect(mqtt_client->mqtt_codec_handle, &mqtt_client->mqttOptions);
             if (connPacket == NULL)
             {
                 LogError("Error: mqtt_codec_connect failed");
@@ -440,7 +440,7 @@ static void onOpenComplete(void* context, IO_OPEN_RESULT open_result)
     }
 }
 
-static void onBytesReceived(void* context, const unsigned char* buffer, size_t size)
+/*static void onBytesReceived(void* context, const unsigned char* buffer, size_t size)
 {
     MQTT_CLIENT* mqtt_client = (MQTT_CLIENT*)context;
     if (mqtt_client != NULL)
@@ -454,7 +454,7 @@ static void onBytesReceived(void* context, const unsigned char* buffer, size_t s
     {
         LogError("Error: mqtt_client is NULL");
     }
-}
+}*/
 
 static void onIoError(void* context)
 {
@@ -945,7 +945,7 @@ static void trace_logger(void* context, const char* format, ...)
             }
             else 
             {
-                size_t curr_pos = strlen(mqtt_client->trace_line);
+                curr_pos = strlen(mqtt_client->trace_line);
                 if (mqtt_client->trace_alloc <= curr_pos+length+1)
                 {
                     mqtt_client->trace_alloc += length+64;
@@ -1088,13 +1088,15 @@ int mqtt_client_connect(MQTT_CLIENT_HANDLE handle, XIO_HANDLE xioHandle, MQTT_CL
         mqtt_client->qosValue = mqttOptions->qualityOfServiceValue;
         mqtt_client->keepAliveInterval = mqttOptions->keepAliveInterval;
         mqtt_client->maxPingRespTime = (DEFAULT_MAX_PING_RESPONSE_TIME < mqttOptions->keepAliveInterval/2) ? DEFAULT_MAX_PING_RESPONSE_TIME : mqttOptions->keepAliveInterval/2;
+
+        ON_BYTES_RECEIVED recv_func = mqtt_client->codec_provider->mqtt_codec_get_recv_func();
         if (cloneMqttOptions(mqtt_client, mqttOptions) != 0)
         {
             LogError("Error: Clone Mqtt Options failed");
             result = __FAILURE__;
         }
         /*Codes_SRS_MQTT_CLIENT_07_008: [mqtt_client_connect shall open the XIO_HANDLE by calling into the xio_open interface.]*/
-        else if (xio_open(xioHandle, onOpenComplete, mqtt_client, onBytesReceived, mqtt_client, onIoError, mqtt_client) != 0)
+        else if (xio_open(xioHandle, onOpenComplete, mqtt_client, recv_func, mqtt_client->mqtt_codec_handle, onIoError, mqtt_client) != 0)
         {
             /*Codes_SRS_MQTT_CLIENT_07_007: [If any failure is encountered then mqtt_client_connect shall return a non-zero value.]*/
             LogError("Error: io_open failed");
@@ -1397,6 +1399,7 @@ void mqtt_client_set_trace(MQTT_CLIENT_HANDLE handle, bool traceOn, bool rawByte
 #ifdef ENABLE_RAW_TRACE
         mqtt_client->rawBytesTrace = rawBytesOn;
 #endif
+        mqtt_client->codec_provider->mqtt_codec_set_trace(mqtt_client->mqtt_codec_handle, trace_logger, mqtt_client);
     }
 #endif
 }
