@@ -227,7 +227,7 @@ static int constructConnectVariableHeader(MQTTCODEC_INSTANCE* mqtt_codec, BUFFER
         {
             if (mqtt_codec->trace_func != NULL)
             {
-                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | VER: %d | KEEPALIVE: %d | FLAGS:", PROTOCOL_NUMBER, mqttOptions->keepAliveInterval);
+                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | VER: %d | KEEPALIVE: %d", PROTOCOL_NUMBER, mqttOptions->keepAliveInterval);
             }
             byteutil_writeUTF(&iterator, "MQTT", 4);
             byteutil_writeByte(&iterator, PROTOCOL_NUMBER);
@@ -520,7 +520,7 @@ static int constructConnPayload(MQTTCODEC_INSTANCE* mqtt_codec, BUFFER_HANDLE ct
                 }
                 if (mqtt_codec->trace_func != NULL)
                 {
-                    mqtt_codec->trace_func(mqtt_codec->trace_ctx, " %ul", packet[CONN_FLAG_BYTE_OFFSET]);
+                    mqtt_codec->trace_func(mqtt_codec->trace_ctx, "  | FLAGS: %ul", packet[CONN_FLAG_BYTE_OFFSET]);
                 }
                 result = 0;
             }
@@ -663,6 +663,7 @@ static BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIEN
             {
                 mqtt_codec->trace_func(mqtt_codec->trace_ctx, "CONNECT");
             }
+
             // Add Variable Header Information
             if (constructConnectVariableHeader(mqtt_codec, result, mqttOptions) != 0)
             {
@@ -671,26 +672,20 @@ static BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIEN
                 BUFFER_delete(result);
                 result = NULL;
             }
+            else if (constructConnPayload(mqtt_codec, result, mqttOptions) != 0)
+            {
+                /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
+                BUFFER_delete(result);
+                result = NULL;
+            }
+            else if (constructFixedHeader(result, CONNECT_TYPE, 0) != 0)
+            {
+                /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
+                BUFFER_delete(result);
+                result = NULL;
+            }
             else
             {
-                if (constructConnPayload(mqtt_codec, result, mqttOptions) != 0)
-                {
-                    /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
-                    BUFFER_delete(result);
-                    result = NULL;
-                }
-                else
-                {
-                    if (constructFixedHeader(result, CONNECT_TYPE, 0) != 0)
-                    {
-                        /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
-                        BUFFER_delete(result);
-                        result = NULL;
-                    }
-                    else
-                    {
-                    }
-                }
             }
         }
     }
