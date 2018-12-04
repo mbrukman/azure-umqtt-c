@@ -16,8 +16,6 @@
 #include <inttypes.h>
 
 #define PAYLOAD_OFFSET                      5
-#define PACKET_TYPE_BYTE(p)                 (CONTROL_PACKET_TYPE)((uint8_t)(((uint8_t)(p)) & 0xf0))
-#define FLAG_VALUE_BYTE(p)                  ((uint8_t)(((uint8_t)(p)) & 0xf))
 
 #define USERNAME_FLAG                       0x80
 #define PASSWORD_FLAG                       0x40
@@ -134,7 +132,7 @@ BUFFER_HANDLE codec_v5_disconnect(MQTT_CODEC_HANDLE handle)
     return result;
 }
 
-BUFFER_HANDLE codec_v5_publish(QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen, STRING_HANDLE trace_log)
+BUFFER_HANDLE codec_v5_publish(MQTT_CODEC_HANDLE handle, QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen)
 {
     (void)qosValue;
     (void)duplicateMsg;
@@ -143,10 +141,9 @@ BUFFER_HANDLE codec_v5_publish(QOS_VALUE qosValue, bool duplicateMsg, bool serve
     (void)topicName;
     (void)msgBuffer;
     (void)buffLen;
-    (void)trace_log;
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_005: [If the parameters topicName is NULL then codec_v5_publish shall return NULL.] */
-    if (topicName == NULL)
+    if (handle == NULL || topicName == NULL)
     {
         result = NULL;
     }
@@ -209,12 +206,11 @@ BUFFER_HANDLE codec_v5_ping(void)
     return result;
 }
 
-BUFFER_HANDLE codec_v5_subscribe(uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count, STRING_HANDLE trace_log)
+BUFFER_HANDLE codec_v5_subscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count)
 {
     (void)packetId;
     (void)subscribeList;
     (void)count;
-    (void)trace_log;
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_023: [If the parameters subscribeList is NULL or if count is 0 then codec_v5_subscribe shall return NULL.] */
     if (subscribeList == NULL || count == 0)
@@ -232,12 +228,11 @@ BUFFER_HANDLE codec_v5_subscribe(uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribe
     return result;
 }
 
-BUFFER_HANDLE codec_v5_unsubscribe(uint16_t packetId, const char** unsubscribeList, size_t count, STRING_HANDLE trace_log)
+BUFFER_HANDLE codec_v5_unsubscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count)
 {
     (void)packetId;
     (void)unsubscribeList;
     (void)count;
-    (void)trace_log;
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_027: [If the parameters unsubscribeList is NULL or if count is 0 then mqtt_codec_unsubscribe shall return NULL.] */
     if (unsubscribeList == NULL || count == 0)

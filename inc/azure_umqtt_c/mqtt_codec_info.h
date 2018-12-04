@@ -30,14 +30,14 @@ typedef void(*pmqtt_codec_destroy)(MQTT_CODEC_HANDLE handle);
 
 typedef BUFFER_HANDLE(*pmqtt_codec_connect)(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions);
 typedef BUFFER_HANDLE(*pmqtt_codec_disconnect)(MQTT_CODEC_HANDLE handle);
-typedef BUFFER_HANDLE(*pmqtt_codec_publish)(QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen, STRING_HANDLE trace_log);
+typedef BUFFER_HANDLE(*pmqtt_codec_publish)(MQTT_CODEC_HANDLE handle, QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen);
 typedef BUFFER_HANDLE(*pmqtt_codec_publishAck)(uint16_t packetId);
 typedef BUFFER_HANDLE(*pmqtt_codec_publishReceived)(uint16_t packetId);
 typedef BUFFER_HANDLE(*pmqtt_codec_publishRelease)(uint16_t packetId);
 typedef BUFFER_HANDLE(*pmqtt_codec_publishComplete)(uint16_t packetId);
 typedef BUFFER_HANDLE(*pmqtt_codec_ping)(void);
-typedef BUFFER_HANDLE(*pmqtt_codec_subscribe)(uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count, STRING_HANDLE trace_log);
-typedef BUFFER_HANDLE(*pmqtt_codec_unsubscribe)(uint16_t packetId, const char** unsubscribeList, size_t count, STRING_HANDLE trace_log);
+typedef BUFFER_HANDLE(*pmqtt_codec_subscribe)(MQTT_CODEC_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count);
+typedef BUFFER_HANDLE(*pmqtt_codec_unsubscribe)(MQTT_CODEC_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count);
 typedef ON_BYTES_RECEIVED(*pmqtt_codec_get_recv_func)(void);
 typedef int(*pmqtt_codec_set_trace)(MQTT_CODEC_HANDLE handle, TRACE_LOG_VALUE trace_func, void* trace_ctx);
 

@@ -364,6 +364,14 @@ static void logIncomingRawTrace(MQTT_CLIENT* mqtt_client, CONTROL_PACKET_TYPE pa
 }
 #endif // NO_LOGGING
 
+static void flush_trace_log(MQTT_CLIENT* mqtt_client)
+{
+    log_outgoing_trace(mqtt_client, mqtt_client->trace_line);
+    free(mqtt_client->trace_line);
+    mqtt_client->trace_line = NULL;
+    mqtt_client->trace_alloc = 0;
+}
+
 static int sendPacketItem(MQTT_CLIENT* mqtt_client, const unsigned char* data, size_t length)
 {
     int result;
@@ -417,10 +425,7 @@ static void onOpenComplete(void* context, IO_OPEN_RESULT open_result)
                 }
                 else
                 {
-                    log_outgoing_trace(mqtt_client, mqtt_client->trace_line);
-                    free(mqtt_client->trace_line);
-                    mqtt_client->trace_line = NULL;
-                    mqtt_client->trace_alloc = 0;
+                    flush_trace_log(mqtt_client);
                 }
                 BUFFER_delete(connPacket);
             }
@@ -439,22 +444,6 @@ static void onOpenComplete(void* context, IO_OPEN_RESULT open_result)
         LogError("Error: mqtt_client is NULL");
     }
 }
-
-/*static void onBytesReceived(void* context, const unsigned char* buffer, size_t size)
-{
-    MQTT_CLIENT* mqtt_client = (MQTT_CLIENT*)context;
-    if (mqtt_client != NULL)
-    {
-        if (mqtt_codec_bytesReceived(mqtt_client->codec_handle, buffer, size) != 0)
-        {
-            set_error_callback(mqtt_client, MQTT_CLIENT_PARSE_ERROR);
-        }
-    }
-    else
-    {
-        LogError("Error: mqtt_client is NULL");
-    }
-}*/
 
 static void onIoError(void* context)
 {
@@ -1141,7 +1130,8 @@ int mqtt_client_publish(MQTT_CLIENT_HANDLE handle, MQTT_MESSAGE_HANDLE msgHandle
             bool isRetained = mqttmessage_getIsRetained(msgHandle);
             uint16_t packetId = mqttmessage_getPacketId(msgHandle);
             const char* topicName = mqttmessage_getTopicName(msgHandle);
-            BUFFER_HANDLE publishPacket = mqtt_codec_publish(qos, isDuplicate, isRetained, packetId, topicName, payload->message, payload->length, trace_log);
+
+            BUFFER_HANDLE publishPacket = mqtt_client->codec_provider->mqtt_codec_publish(mqtt_client->mqtt_codec_handle, qos, isDuplicate, isRetained, packetId, topicName, payload->message, payload->length);
             if (publishPacket == NULL)
             {
                 /*Codes_SRS_MQTT_CLIENT_07_020: [If any failure is encountered then mqtt_client_unsubscribe shall return a non-zero value.]*/
@@ -1188,9 +1178,7 @@ int mqtt_client_subscribe(MQTT_CLIENT_HANDLE handle, uint16_t packetId, SUBSCRIB
     }
     else
     {
-        STRING_HANDLE trace_log = construct_trace_log_handle(mqtt_client);
-
-        BUFFER_HANDLE subPacket = mqtt_codec_subscribe(packetId, subscribeList, count, trace_log);
+        BUFFER_HANDLE subPacket = mqtt_client->codec_provider->mqtt_codec_subscribe(mqtt_client->mqtt_codec_handle, packetId, subscribeList, count);
         if (subPacket == NULL)
         {
             /*Codes_SRS_MQTT_CLIENT_07_014: [If any failure is encountered then mqtt_client_subscribe shall return a non-zero value.]*/
@@ -1211,14 +1199,10 @@ int mqtt_client_subscribe(MQTT_CLIENT_HANDLE handle, uint16_t packetId, SUBSCRIB
             }
             else
             {
-                log_outgoing_trace(mqtt_client, STRING_c_str(trace_log));
+                flush_trace_log(mqtt_client);
                 result = 0;
             }
             BUFFER_delete(subPacket);
-        }
-        if (trace_log != NULL)
-        {
-            STRING_delete(trace_log);
         }
     }
     return result;
@@ -1238,7 +1222,7 @@ int mqtt_client_unsubscribe(MQTT_CLIENT_HANDLE handle, uint16_t packetId, const 
     {
         STRING_HANDLE trace_log = construct_trace_log_handle(mqtt_client);
 
-        BUFFER_HANDLE unsubPacket = mqtt_codec_unsubscribe(packetId, unsubscribeList, count, trace_log);
+        BUFFER_HANDLE unsubPacket = mqtt_client->codec_provider->mqtt_codec_unsubscribe(mqtt_client->mqtt_codec_handle, packetId, unsubscribeList, count);
         if (unsubPacket == NULL)
         {
             /*Codes_SRS_MQTT_CLIENT_07_017: [If any failure is encountered then mqtt_client_unsubscribe shall return a non-zero value.]*/

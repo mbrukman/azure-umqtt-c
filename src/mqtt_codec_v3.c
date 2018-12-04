@@ -12,12 +12,11 @@
 
 #include "azure_umqtt_c/mqtt_codec_v3.h"
 #include "azure_umqtt_c/mqtt_codec_info.h"
+#include "azure_umqtt_c/mqtt_codec_util.h"
 
 #include <inttypes.h>
 
 #define PAYLOAD_OFFSET                      5
-#define PACKET_TYPE_BYTE(p)                 (CONTROL_PACKET_TYPE)((uint8_t)(((uint8_t)(p)) & 0xf0))
-#define FLAG_VALUE_BYTE(p)                  ((uint8_t)(((uint8_t)(p)) & 0xf))
 
 #define USERNAME_FLAG                       0x80
 #define PASSWORD_FLAG                       0x40
@@ -49,6 +48,7 @@
 
 static const char* const TRUE_CONST = "true";
 static const char* const FALSE_CONST = "false";
+static const char* const BUFF_ALLOCATION_ERROR_MSG = "Failure allocating Buffer";
 
 DEFINE_ENUM(CODEC_STATE_RESULT, CODEC_STATE_VALUES);
 
@@ -76,133 +76,68 @@ typedef struct PUBLISH_HEADER_INFO_TAG
     QOS_VALUE qualityOfServiceValue;
 } PUBLISH_HEADER_INFO;
 
-static const char* retrieve_qos_value(QOS_VALUE value)
-{
-    switch (value)
-    {
-        case DELIVER_AT_MOST_ONCE:
-            return "DELIVER_AT_MOST_ONCE";
-        case DELIVER_AT_LEAST_ONCE:
-            return "DELIVER_AT_LEAST_ONCE";
-        case DELIVER_EXACTLY_ONCE:
-        default:
-            return "DELIVER_EXACTLY_ONCE";
-    }
-}
-
-static void byteutil_writeByte(uint8_t** buffer, uint8_t value)
-{
-    if (buffer != NULL)
-    {
-        **buffer = value;
-        (*buffer)++;
-    }
-}
-
-static void byteutil_writeInt(uint8_t** buffer, uint16_t value)
-{
-    if (buffer != NULL)
-    {
-        **buffer = (char)(value / 256);
-        (*buffer)++;
-        **buffer = (char)(value % 256);
-        (*buffer)++;
-    }
-}
-
-static void byteutil_writeUTF(uint8_t** buffer, const char* stringData, uint16_t len)
-{
-    if (buffer != NULL)
-    {
-        byteutil_writeInt(buffer, len);
-        (void)memcpy(*buffer, stringData, len);
-        *buffer += len;
-    }
-}
-
-static CONTROL_PACKET_TYPE processControlPacketType(uint8_t pktByte, int* flags)
-{
-    CONTROL_PACKET_TYPE result;
-    result = PACKET_TYPE_BYTE(pktByte);
-    if (flags != NULL)
-    {
-        *flags = FLAG_VALUE_BYTE(pktByte);
-    }
-    return result;
-}
-
-static int addListItemsToUnsubscribePacket(BUFFER_HANDLE ctrlPacket, const char** payloadList, size_t payloadCount, STRING_HANDLE trace_log)
+static int addListItemsToUnsubscribePacket(MQTTCODEC_INSTANCE* mqtt_codec, BUFFER_HANDLE ctrlPacket, const char** payloadList, size_t payloadCount)
 {
     int result = 0;
-    if (payloadList == NULL || ctrlPacket == NULL)
+    size_t index = 0;
+    for (index = 0; index < payloadCount && result == 0; index++)
     {
-        result = __FAILURE__;
-    }
-    else
-    {
-        size_t index = 0;
-        for (index = 0; index < payloadCount && result == 0; index++)
+        // Add the Payload
+        size_t offsetLen = BUFFER_length(ctrlPacket);
+        size_t topicLen = strlen(payloadList[index]);
+        if (topicLen > USHRT_MAX)
         {
-            // Add the Payload
-            size_t offsetLen = BUFFER_length(ctrlPacket);
-            size_t topicLen = strlen(payloadList[index]);
-            if (topicLen > USHRT_MAX)
+            LogError("Failure Topic length is greater than max size");
+            result = __FAILURE__;
+        }
+        else if (BUFFER_enlarge(ctrlPacket, topicLen + 2) != 0)
+        {
+            LogError("Failure enlarging buffer");
+            result = __FAILURE__;
+        }
+        else
+        {
+            uint8_t* iterator = BUFFER_u_char(ctrlPacket);
+            iterator += offsetLen;
+            byteutil_writeUTF(&iterator, payloadList[index], (uint16_t)topicLen);
+            if (mqtt_codec->trace_func != NULL)
             {
-                result = __FAILURE__;
-            }
-            else if (BUFFER_enlarge(ctrlPacket, topicLen + 2) != 0)
-            {
-                result = __FAILURE__;
-            }
-            else
-            {
-                uint8_t* iterator = BUFFER_u_char(ctrlPacket);
-                iterator += offsetLen;
-                byteutil_writeUTF(&iterator, payloadList[index], (uint16_t)topicLen);
-            }
-            if (trace_log != NULL)
-            {
-                STRING_sprintf(trace_log, " | TOPIC_NAME: %s", payloadList[index]);
+                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | TOPIC_NAME: %s", payloadList[index]);
             }
         }
     }
     return result;
 }
 
-static int addListItemsToSubscribePacket(BUFFER_HANDLE ctrlPacket, SUBSCRIBE_PAYLOAD* payloadList, size_t payloadCount, STRING_HANDLE trace_log)
+static int addListItemsToSubscribePacket(MQTTCODEC_INSTANCE* mqtt_codec, BUFFER_HANDLE ctrlPacket, SUBSCRIBE_PAYLOAD* payloadList, size_t payloadCount)
 {
     int result = 0;
-    if (payloadList == NULL || ctrlPacket == NULL)
+    size_t index = 0;
+    for (index = 0; index < payloadCount && result == 0; index++)
     {
-        result = __FAILURE__;
-    }
-    else
-    {
-        size_t index = 0;
-        for (index = 0; index < payloadCount && result == 0; index++)
+        // Add the Payload
+        size_t offsetLen = BUFFER_length(ctrlPacket);
+        size_t topicLen = strlen(payloadList[index].subscribeTopic);
+        if (topicLen > USHRT_MAX)
         {
-            // Add the Payload
-            size_t offsetLen = BUFFER_length(ctrlPacket);
-            size_t topicLen = strlen(payloadList[index].subscribeTopic);
-            if (topicLen > USHRT_MAX)
-            {
-                result = __FAILURE__;
-            }
-            else if (BUFFER_enlarge(ctrlPacket, topicLen + 2 + 1) != 0)
-            {
-                result = __FAILURE__;
-            }
-            else
-            {
-                uint8_t* iterator = BUFFER_u_char(ctrlPacket);
-                iterator += offsetLen;
-                byteutil_writeUTF(&iterator, payloadList[index].subscribeTopic, (uint16_t)topicLen);
-                *iterator = payloadList[index].qosReturn;
+            LogError("Failure Topic length is greater than max size");
+            result = __FAILURE__;
+        }
+        else if (BUFFER_enlarge(ctrlPacket, topicLen + 2 + 1) != 0)
+        {
+            LogError("Failure enlarging buffer");
+            result = __FAILURE__;
+        }
+        else
+        {
+            uint8_t* iterator = BUFFER_u_char(ctrlPacket);
+            iterator += offsetLen;
+            byteutil_writeUTF(&iterator, payloadList[index].subscribeTopic, (uint16_t)topicLen);
+            *iterator = payloadList[index].qosReturn;
 
-                if (trace_log != NULL)
-                {
-                    STRING_sprintf(trace_log, " | TOPIC_NAME: %s | QOS: %d", payloadList[index].subscribeTopic, (int)payloadList[index].qosReturn);
-                }
+            if (mqtt_codec->trace_func != NULL)
+            {
+                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | TOPIC_NAME: %s | QOS: %d", payloadList[index].subscribeTopic, (int)payloadList[index].qosReturn);
             }
         }
     }
@@ -214,6 +149,7 @@ static int constructConnectVariableHeader(MQTTCODEC_INSTANCE* mqtt_codec, BUFFER
     int result = 0;
     if (BUFFER_enlarge(ctrlPacket, CONNECT_VARIABLE_HEADER_SIZE) != 0)
     {
+        LogError("Failure enlarging buffer");
         result = __FAILURE__;
     }
     else
@@ -239,7 +175,7 @@ static int constructConnectVariableHeader(MQTTCODEC_INSTANCE* mqtt_codec, BUFFER
     return result;
 }
 
-static int constructPublishVariableHeader(BUFFER_HANDLE ctrlPacket, const PUBLISH_HEADER_INFO* publishHeader, STRING_HANDLE trace_log)
+static int constructPublishVariableHeader(MQTTCODEC_INSTANCE* mqtt_codec, BUFFER_HANDLE ctrlPacket, const PUBLISH_HEADER_INFO* publishHeader)
 {
     int result = 0;
     size_t topicLen = 0;
@@ -277,15 +213,15 @@ static int constructPublishVariableHeader(BUFFER_HANDLE ctrlPacket, const PUBLIS
             iterator += currLen;
             /* The Topic Name MUST be present as the first field in the PUBLISH Packet Variable header.It MUST be 792 a UTF-8 encoded string [MQTT-3.3.2-1] as defined in section 1.5.3.*/
             byteutil_writeUTF(&iterator, publishHeader->topicName, (uint16_t)topicLen);
-            if (trace_log != NULL)
+            if (mqtt_codec->trace_func != NULL)
             {
-                STRING_sprintf(trace_log, " | TOPIC_NAME: %s", publishHeader->topicName);
+                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | TOPIC_NAME: %s", publishHeader->topicName);
             }
             if (idLen > 0)
             {
-                if (trace_log != NULL)
+                if (mqtt_codec->trace_func != NULL)
                 {
-                    STRING_sprintf(trace_log, " | PACKET_ID: %"PRIu16, publishHeader->packetId);
+                    mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | PACKET_ID: %"PRIu16, publishHeader->packetId);
                 }
                 byteutil_writeInt(&iterator, publishHeader->packetId);
             }
@@ -667,7 +603,7 @@ static BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIEN
             // Add Variable Header Information
             if (constructConnectVariableHeader(mqtt_codec, result, mqttOptions) != 0)
             {
-                LogError("Invalid argument specified: mqttOptions: %p, handle: %p", mqttOptions, handle);
+                LogError("Failure constructing variable header");
                 /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
                 BUFFER_delete(result);
                 result = NULL;
@@ -675,17 +611,16 @@ static BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIEN
             else if (constructConnPayload(mqtt_codec, result, mqttOptions) != 0)
             {
                 /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
+                LogError("Failure constructing payload");
                 BUFFER_delete(result);
                 result = NULL;
             }
             else if (constructFixedHeader(result, CONNECT_TYPE, 0) != 0)
             {
                 /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
+                LogError("Failure constructing fixed");
                 BUFFER_delete(result);
                 result = NULL;
-            }
-            else
-            {
             }
         }
     }
@@ -724,18 +659,20 @@ static BUFFER_HANDLE codec_v3_disconnect(MQTT_CODEC_HANDLE handle)
     return result;
 }
 
-BUFFER_HANDLE mqtt_codec_publish(QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen, STRING_HANDLE trace_log)
+BUFFER_HANDLE codec_v3_publish(MQTT_CODEC_HANDLE handle, QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_005: [If the parameters topicName is NULL then mqtt_codec_publish shall return NULL.] */
-    if (topicName == NULL)
+    if (handle == NULL || topicName == NULL)
     {
+        LogError("Invalid argument specified: topicName: %p, handle: %p", topicName, handle);
         result = NULL;
     }
     /* Codes_SRS_MQTT_CODEC_07_036: [mqtt_codec_publish shall return NULL if the buffLen variable is greater than the MAX_SEND_SIZE (0xFFFFFF7F).] */
     else if (buffLen > MAX_SEND_SIZE)
     {
         /* Codes_SRS_MQTT_CODEC_07_006: [If any error is encountered then mqtt_codec_publish shall return NULL.] */
+        LogError("Publish buffer lengh is greater than max send size of %ul", MAX_SEND_SIZE);
         result = NULL;
     }
     else
@@ -762,17 +699,22 @@ BUFFER_HANDLE mqtt_codec_publish(QOS_VALUE qosValue, bool duplicateMsg, bool ser
 
         /* Codes_SRS_MQTT_CODEC_07_007: [mqtt_codec_publish shall return a BUFFER_HANDLE that represents a MQTT PUBLISH message.] */
         result = BUFFER_new();
-        if (result != NULL)
+        if (result == NULL)
         {
-            STRING_HANDLE varible_header_log = NULL;
-            if (trace_log != NULL)
+            LogError(BUFF_ALLOCATION_ERROR_MSG);
+        }
+        else
+        {
+            MQTTCODEC_INSTANCE* mqtt_codec = (MQTTCODEC_INSTANCE*)handle;
+
+            if (mqtt_codec->trace_func != NULL)
             {
-                varible_header_log = STRING_construct_sprintf(" | IS_DUP: %s | RETAIN: %d | QOS: %s", duplicateMsg ? TRUE_CONST : FALSE_CONST,
+                mqtt_codec->trace_func(mqtt_codec->trace_ctx, "PUBLISH  | IS_DUP: %s | RETAIN: %d | QOS: %s", duplicateMsg ? TRUE_CONST : FALSE_CONST,
                     serverRetain ? 1 : 0,
                     retrieve_qos_value(publishInfo.qualityOfServiceValue) );
             }
 
-            if (constructPublishVariableHeader(result, &publishInfo, varible_header_log) != 0)
+            if (constructPublishVariableHeader(mqtt_codec, result, &publishInfo) != 0)
             {
                 /* Codes_SRS_MQTT_CODEC_07_006: [If any error is encountered then mqtt_codec_publish shall return NULL.] */
                 BUFFER_delete(result);
@@ -803,9 +745,9 @@ BUFFER_HANDLE mqtt_codec_publish(QOS_VALUE qosValue, bool duplicateMsg, bool ser
                             iterator += payloadOffset;
                             // Write Message
                             (void)memcpy(iterator, msgBuffer, buffLen);
-                            if (trace_log)
+                            if (mqtt_codec->trace_func != NULL)
                             {
-                                STRING_sprintf(varible_header_log, " | PAYLOAD_LEN: %zu", buffLen);
+                                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | PAYLOAD_LEN: %zu", buffLen);
                             }
                         }
                     }
@@ -813,28 +755,13 @@ BUFFER_HANDLE mqtt_codec_publish(QOS_VALUE qosValue, bool duplicateMsg, bool ser
 
                 if (result != NULL)
                 {
-                    if (trace_log != NULL)
-                    {
-                        (void)STRING_copy(trace_log, "PUBLISH");
-                    }
                     if (constructFixedHeader(result, PUBLISH_TYPE, headerFlags) != 0)
                     {
                         /* Codes_SRS_MQTT_CODEC_07_006: [If any error is encountered then mqtt_codec_publish shall return NULL.] */
                         BUFFER_delete(result);
                         result = NULL;
                     }
-                    else
-                    {
-                        if (trace_log != NULL)
-                        {
-                            (void)STRING_concat_with_STRING(trace_log, varible_header_log);
-                        }
-                    }
                 }
-            }
-            if (varible_header_log != NULL)
-            {
-                STRING_delete(varible_header_log);
             }
         }
     }
@@ -904,129 +831,97 @@ BUFFER_HANDLE mqtt_codec_ping()
     return result;
 }
 
-BUFFER_HANDLE mqtt_codec_subscribe(uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count, STRING_HANDLE trace_log)
+static BUFFER_HANDLE codec_v3_subscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_023: [If the parameters subscribeList is NULL or if count is 0 then mqtt_codec_subscribe shall return NULL.] */
-    if (subscribeList == NULL || count == 0)
+    if (handle == NULL || subscribeList == NULL || count == 0)
     {
+        LogError("Invalid argument specified: handle: %p, subscribeList: %p, count: %ul", handle, subscribeList, (unsigned int)count);
         result = NULL;
     }
     else
     {
+        MQTTCODEC_INSTANCE* mqtt_codec = (MQTTCODEC_INSTANCE*)handle;
+
         /* Codes_SRS_MQTT_CODEC_07_026: [mqtt_codec_subscribe shall return a BUFFER_HANDLE that represents a MQTT SUBSCRIBE message.]*/
-        result = BUFFER_new();
-        if (result != NULL)
+        if ((result = BUFFER_new()) == NULL)
         {
+            LogError(BUFF_ALLOCATION_ERROR_MSG);
+        }
+        else
+        {
+            if (mqtt_codec->trace_func != NULL)
+            {
+                mqtt_codec->trace_func(mqtt_codec->trace_ctx, "SUBSCRIBE | PACKET_ID: %"PRIu16, packetId);
+            }
+
             if (constructSubscibeTypeVariableHeader(result, packetId) != 0)
             {
                 /* Codes_SRS_MQTT_CODEC_07_025: [If any error is encountered then mqtt_codec_subscribe shall return NULL.] */
                 BUFFER_delete(result);
                 result = NULL;
             }
-            else
+            /* Codes_SRS_MQTT_CODEC_07_024: [mqtt_codec_subscribe shall iterate through count items in the subscribeList.] */
+            else if (addListItemsToSubscribePacket(mqtt_codec, result, subscribeList, count) != 0)
             {
-                STRING_HANDLE sub_trace = NULL;
-                if (trace_log != NULL)
-                {
-                    sub_trace = STRING_construct_sprintf(" | PACKET_ID: %"PRIu16, packetId);
-                }
-                /* Codes_SRS_MQTT_CODEC_07_024: [mqtt_codec_subscribe shall iterate through count items in the subscribeList.] */
-                if (addListItemsToSubscribePacket(result, subscribeList, count, sub_trace) != 0)
-                {
-                    /* Codes_SRS_MQTT_CODEC_07_025: [If any error is encountered then mqtt_codec_subscribe shall return NULL.] */
-                    BUFFER_delete(result);
-                    result = NULL;
-                }
-                else
-                {
-
-                    if (trace_log != NULL)
-                    {
-                        STRING_concat(trace_log, "SUBSCRIBE");
-                    }
-                    if (constructFixedHeader(result, SUBSCRIBE_TYPE, SUBSCRIBE_FIXED_HEADER_FLAG) != 0)
-                    {
-                        /* Codes_SRS_MQTT_CODEC_07_025: [If any error is encountered then mqtt_codec_subscribe shall return NULL.] */
-                        BUFFER_delete(result);
-                        result = NULL;
-                    }
-                    else
-                    {
-                        if (trace_log != NULL)
-                        {
-                            (void)STRING_concat_with_STRING(trace_log, sub_trace);
-                        }
-                    }
-                }
-                if (sub_trace != NULL)
-                {
-                    STRING_delete(sub_trace);
-                }
+                /* Codes_SRS_MQTT_CODEC_07_025: [If any error is encountered then mqtt_codec_subscribe shall return NULL.] */
+                BUFFER_delete(result);
+                result = NULL;
+            }
+            else if (constructFixedHeader(result, SUBSCRIBE_TYPE, SUBSCRIBE_FIXED_HEADER_FLAG) != 0)
+            {
+                /* Codes_SRS_MQTT_CODEC_07_025: [If any error is encountered then mqtt_codec_subscribe shall return NULL.] */
+                BUFFER_delete(result);
+                result = NULL;
             }
         }
     }
     return result;
 }
 
-BUFFER_HANDLE mqtt_codec_unsubscribe(uint16_t packetId, const char** unsubscribeList, size_t count, STRING_HANDLE trace_log)
+BUFFER_HANDLE mqtt_codec_unsubscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_027: [If the parameters unsubscribeList is NULL or if count is 0 then mqtt_codec_unsubscribe shall return NULL.] */
-    if (unsubscribeList == NULL || count == 0)
+    if (handle == NULL || unsubscribeList == NULL || count == 0)
     {
+        LogError("Invalid argument specified: handle: %p, subscribeList: %p, count: %ul", handle, unsubscribeList, (unsigned int)count);
         result = NULL;
     }
     else
     {
+        MQTTCODEC_INSTANCE* mqtt_codec = (MQTTCODEC_INSTANCE*)handle;
+
         /* Codes_SRS_MQTT_CODEC_07_030: [mqtt_codec_unsubscribe shall return a BUFFER_HANDLE that represents a MQTT SUBSCRIBE message.] */
-        result = BUFFER_new();
-        if (result != NULL)
+        if ((result = BUFFER_new()) != NULL)
         {
-            if (constructSubscibeTypeVariableHeader(result, packetId) != 0)
+            LogError(BUFF_ALLOCATION_ERROR_MSG);
+        }
+        else if (constructSubscibeTypeVariableHeader(result, packetId) != 0)
+        {
+            /* Codes_SRS_MQTT_CODEC_07_029: [If any error is encountered then mqtt_codec_unsubscribe shall return NULL.] */
+            BUFFER_delete(result);
+            result = NULL;
+        }
+        else
+        {
+            if (mqtt_codec->trace_func != NULL)
+            {
+                mqtt_codec->trace_func(mqtt_codec->trace_ctx, "UNSUBSCRIBE | PACKET_ID: %"PRIu16, packetId);
+            }
+            /* Codes_SRS_MQTT_CODEC_07_028: [mqtt_codec_unsubscribe shall iterate through count items in the unsubscribeList.] */
+            if (addListItemsToUnsubscribePacket(mqtt_codec, result, unsubscribeList, count) != 0)
             {
                 /* Codes_SRS_MQTT_CODEC_07_029: [If any error is encountered then mqtt_codec_unsubscribe shall return NULL.] */
                 BUFFER_delete(result);
                 result = NULL;
             }
-            else
+            else if (constructFixedHeader(result, UNSUBSCRIBE_TYPE, UNSUBSCRIBE_FIXED_HEADER_FLAG) != 0)
             {
-                STRING_HANDLE unsub_trace = NULL;
-                if (trace_log != NULL)
-                {
-                    unsub_trace = STRING_construct_sprintf(" | PACKET_ID: %"PRIu16, packetId);
-                }
-                /* Codes_SRS_MQTT_CODEC_07_028: [mqtt_codec_unsubscribe shall iterate through count items in the unsubscribeList.] */
-                if (addListItemsToUnsubscribePacket(result, unsubscribeList, count, unsub_trace) != 0)
-                {
-                    /* Codes_SRS_MQTT_CODEC_07_029: [If any error is encountered then mqtt_codec_unsubscribe shall return NULL.] */
-                    BUFFER_delete(result);
-                    result = NULL;
-                }
-                else
-                {
-                    if (trace_log != NULL)
-                    {
-                        (void)STRING_copy(trace_log, "UNSUBSCRIBE");
-                    }
-                    if (constructFixedHeader(result, UNSUBSCRIBE_TYPE, UNSUBSCRIBE_FIXED_HEADER_FLAG) != 0)
-                    {
-                        /* Codes_SRS_MQTT_CODEC_07_029: [If any error is encountered then mqtt_codec_unsubscribe shall return NULL.] */
-                        BUFFER_delete(result);
-                        result = NULL;
-                    }
-                    else
-                    {
-                        if (trace_log != NULL)
-                        {
-                            (void)STRING_concat_with_STRING(trace_log, unsub_trace);
-                        }
-                    }
-                }
-                if (unsub_trace != NULL)
-                {
-                    STRING_delete(unsub_trace);
-                }
+                /* Codes_SRS_MQTT_CODEC_07_029: [If any error is encountered then mqtt_codec_unsubscribe shall return NULL.] */
+                BUFFER_delete(result);
+                result = NULL;
             }
         }
     }
@@ -1142,25 +1037,25 @@ static CODEC_PROVIDER codec_provider =
     codec_v3_destroy,
     codec_v3_connect,
     codec_v3_disconnect,
+    codec_v3_publish,
     NULL,
     NULL,
     NULL,
     NULL,
     NULL,
-    NULL,
-    NULL,
+    codec_v3_subscribe,
     NULL,
     codec_v3_get_recv_func,
     codec_v3_set_trace
     /*,
     ,
-    codec_v3_publish,
+    ,
     codec_v3_publishAck,
     codec_v3_publishReceived,
     codec_v3_publishRelease,
     codec_v3_publishComplete,
     codec_v3_ping,
-    codec_v3_subscribe,
+    ,
     codec_v3_unsubscribe,
     */
 };

@@ -79,12 +79,11 @@ static void OnOperationComplete(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_RES
             subscribe[1].subscribeTopic = TOPIC_NAME_B;
             subscribe[1].qosReturn = DELIVER_EXACTLY_ONCE;
 
-            /*if (mqtt_client_subscribe(handle, PACKET_ID_VALUE++, subscribe, sizeof(subscribe) / sizeof(subscribe[0])) != 0)
+            if (mqtt_client_subscribe(handle, PACKET_ID_VALUE++, subscribe, sizeof(subscribe) / sizeof(subscribe[0])) != 0)
             {
                 (void)printf("%d: mqtt_client_subscribe failed\r\n", __LINE__);
                 g_continue = false;
-            }*/
-            mqtt_client_disconnect(handle, NULL, NULL);
+            }
             break;
         }
         case MQTT_CLIENT_ON_SUBSCRIBE_ACK:

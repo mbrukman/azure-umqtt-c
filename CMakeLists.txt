@@ -61,6 +61,7 @@ set(source_c_files
     ./src/mqtt_client.c
     ./src/mqtt_codec_v3.c
     ./src/mqtt_codec_v5.c
+    ./src/mqtt_codec_util.c
     ./src/mqtt_message.c
 )
 
@@ -68,6 +69,7 @@ set(source_c_files
 set(source_h_files
     ./inc/azure_umqtt_c/mqtt_client.h
     ./inc/azure_umqtt_c/mqtt_codec_info.h
+    ./inc/azure_umqtt_c/mqtt_codec_util.h
     ./inc/azure_umqtt_c/mqtt_codec_v3.h
     ./inc/azure_umqtt_c/mqtt_codec_v5.h
     ./inc/azure_umqtt_c/mqttconst.h
