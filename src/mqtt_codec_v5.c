@@ -211,6 +211,7 @@ BUFFER_HANDLE codec_v5_subscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, SU
     (void)packetId;
     (void)subscribeList;
     (void)count;
+    (void)handle;
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_023: [If the parameters subscribeList is NULL or if count is 0 then codec_v5_subscribe shall return NULL.] */
     if (subscribeList == NULL || count == 0)
@@ -233,6 +234,7 @@ BUFFER_HANDLE codec_v5_unsubscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, 
     (void)packetId;
     (void)unsubscribeList;
     (void)count;
+    (void)handle;
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_027: [If the parameters unsubscribeList is NULL or if count is 0 then mqtt_codec_unsubscribe shall return NULL.] */
     if (unsubscribeList == NULL || count == 0)

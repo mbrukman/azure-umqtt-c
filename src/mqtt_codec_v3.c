@@ -803,10 +803,11 @@ BUFFER_HANDLE mqtt_codec_publishComplete(uint16_t packetId)
 BUFFER_HANDLE mqtt_codec_ping()
 {
     /* Codes_SRS_MQTT_CODEC_07_021: [On success mqtt_codec_ping shall construct a BUFFER_HANDLE that represents a MQTT PINGREQ packet.] */
-    BUFFER_HANDLE result = BUFFER_new();
+    BUFFER_HANDLE result = BUFFER_create_size(2);
     if (result != NULL)
     {
-        if (BUFFER_enlarge(result, 2) != 0)
+        uint8_t* iterator = BUFFER_u_char(result);
+        if (iterator == NULL)
         {
             /* Codes_SRS_MQTT_CODEC_07_022: [If any error is encountered mqtt_codec_ping shall return NULL.] */
             BUFFER_delete(result);
@@ -814,18 +815,8 @@ BUFFER_HANDLE mqtt_codec_ping()
         }
         else
         {
-            uint8_t* iterator = BUFFER_u_char(result);
-            if (iterator == NULL)
-            {
-                /* Codes_SRS_MQTT_CODEC_07_022: [If any error is encountered mqtt_codec_ping shall return NULL.] */
-                BUFFER_delete(result);
-                result = NULL;
-            }
-            else
-            {
-                iterator[0] = PINGREQ_TYPE;
-                iterator[1] = 0;
-            }
+            iterator[0] = PINGREQ_TYPE;
+            iterator[1] = 0;
         }
     }
     return result;

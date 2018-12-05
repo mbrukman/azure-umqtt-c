@@ -120,6 +120,11 @@ static void OnOperationComplete(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_RES
         }
         case MQTT_CLIENT_ON_PUBLISH_COMP:
         {
+            /*if (mqtt_client_unsubscribe(handle, PACKET_ID_VALUE++, TOPIC_NAME_A, 1) != 0)
+            {
+                (void)printf("%d: mqtt_client_unsubscribe failed\r\n", __LINE__);
+                g_continue = false;
+            }*/
             // Done so send disconnect
             mqtt_client_disconnect(handle, NULL, NULL);
             break;
@@ -129,6 +134,8 @@ static void OnOperationComplete(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_RES
             break;
         case MQTT_CLIENT_ON_UNSUBSCRIBE_ACK:
         {
+            // Done so send disconnect
+            mqtt_client_disconnect(handle, NULL, NULL);
             break;
         }
         case MQTT_CLIENT_ON_PING_RESPONSE:

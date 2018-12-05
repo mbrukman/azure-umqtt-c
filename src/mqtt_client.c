@@ -1123,8 +1123,6 @@ int mqtt_client_publish(MQTT_CLIENT_HANDLE handle, MQTT_MESSAGE_HANDLE msgHandle
         }
         else
         {
-            STRING_HANDLE trace_log = construct_trace_log_handle(mqtt_client);
-
             QOS_VALUE qos = mqttmessage_getQosType(msgHandle);
             bool isDuplicate = mqttmessage_getIsDuplicateMsg(msgHandle);
             bool isRetained = mqttmessage_getIsRetained(msgHandle);
@@ -1152,14 +1150,10 @@ int mqtt_client_publish(MQTT_CLIENT_HANDLE handle, MQTT_MESSAGE_HANDLE msgHandle
                 }
                 else
                 {
-                    log_outgoing_trace(mqtt_client, STRING_c_str(trace_log));
+                    flush_trace_log(mqtt_client);
                     result = 0;
                 }
                 BUFFER_delete(publishPacket);
-            }
-            if (trace_log != NULL)
-            {
-                STRING_delete(trace_log);
             }
         }
     }
