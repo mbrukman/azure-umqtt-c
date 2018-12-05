@@ -198,10 +198,12 @@ BUFFER_HANDLE codec_v5_publishComplete(uint16_t packetId)
 
 BUFFER_HANDLE codec_v5_ping(void)
 {
-    /* Codes_SRS_MQTT_CODEC_07_021: [On success codec_v5_ping shall construct a BUFFER_HANDLE that represents a MQTT PINGREQ packet.] */
-    BUFFER_HANDLE result = BUFFER_new();
+    BUFFER_HANDLE result = BUFFER_create_size(2);
     if (result != NULL)
     {
+        uint8_t* iterator = BUFFER_u_char(result);
+        iterator[0] = PINGREQ_TYPE;
+        iterator[1] = 0;
     }
     return result;
 }
