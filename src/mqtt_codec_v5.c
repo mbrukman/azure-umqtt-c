@@ -40,19 +40,11 @@
 
 #define MAX_SEND_SIZE                       0xFFFFFF7F
 
-#define CODEC_STATE_VALUES      \
-    CODEC_STATE_FIXED_HEADER,   \
-    CODEC_STATE_VAR_HEADER,     \
-    CODEC_STATE_PAYLOAD
-
-static const char* const TRUE_CONST = "true";
-static const char* const FALSE_CONST = "false";
-
-DEFINE_ENUM(CODEC_STATE_RESULT, CODEC_STATE_VALUES);
-
 typedef struct CODEC_V5_INSTANCE_TAG
 {
     CONTROL_PACKET_TYPE currPacket;
+    BUFFER_HANDLE headerData;
+
     TRACE_LOG_VALUE trace_func;
     void* trace_ctx;
 } CODEC_V5_INSTANCE;
@@ -83,13 +75,14 @@ static MQTT_CODEC_HANDLE codec_v5_create(ON_PACKET_COMPLETE_CALLBACK on_packet_c
     (void)on_packet_complete_cb;
     (void)context;
     CODEC_V5_INSTANCE* result;
-    if ((result = malloc(sizeof(CODEC_V5_INSTANCE))) == NULL)
+    if ((result = (CODEC_V5_INSTANCE*)malloc(sizeof(CODEC_V5_INSTANCE))) == NULL)
     {
         /* Codes_SRS_MQTT_CODEC_07_001: [If a failure is encountered then codec_v5_create shall return NULL.] */
         LogError("Failure allocating codec");
     }
     else
     {
+        memset(result, 0, sizeof(CODEC_V5_INSTANCE));
         result->currPacket = UNKNOWN_TYPE;
     }
     return (MQTT_CODEC_HANDLE)result;
@@ -121,9 +114,10 @@ BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIO
     return result;
 }
 
-BUFFER_HANDLE codec_v5_disconnect(MQTT_CODEC_HANDLE handle)
+BUFFER_HANDLE codec_v5_disconnect(MQTT_CODEC_HANDLE handle, const DISCONNECT_INFO* info)
 {
     (void)handle;
+    (void)info;
     /* Codes_SRS_MQTT_CODEC_07_011: [On success codec_v5_disconnect shall construct a BUFFER_HANDLE that represents a MQTT DISCONNECT packet.] */
     BUFFER_HANDLE result = BUFFER_new();
     if (result != NULL)
@@ -198,8 +192,12 @@ BUFFER_HANDLE codec_v5_publishComplete(uint16_t packetId)
 
 BUFFER_HANDLE codec_v5_ping(void)
 {
-    BUFFER_HANDLE result = BUFFER_create_size(2);
+    BUFFER_HANDLE result = BUFFER_create_with_size(2);
     if (result != NULL)
+    {
+        LogError(FAILURE_MSG_CREATE_BUFFER);
+    }
+    else
     {
         uint8_t* iterator = BUFFER_u_char(result);
         iterator[0] = PINGREQ_TYPE;

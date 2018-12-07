@@ -172,7 +172,7 @@ int main(void)
     }
     else
     {
-        MQTT_CLIENT_HANDLE mqttHandle = mqtt_client_init(MQTT_VERSION_3x, OnRecvCallback, OnOperationComplete, NULL, OnErrorComplete, NULL);
+        MQTT_CLIENT_HANDLE mqttHandle = mqtt_client_init(OnRecvCallback, OnOperationComplete, NULL, OnErrorComplete, NULL);
         if (mqttHandle == NULL)
         {
             (void)printf("mqtt_client_init failed\r\n");

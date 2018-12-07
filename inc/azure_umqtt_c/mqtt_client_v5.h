@@ -43,12 +43,18 @@ DEFINE_ENUM(MQTT_CLIENT_EVENT_RESULT, MQTT_CLIENT_EVENT_VALUES);
 
 DEFINE_ENUM(MQTT_CLIENT_EVENT_ERROR, MQTT_CLIENT_EVENT_ERROR_VALUES);
 
+#define MQTT_VERSION_VALUES     \
+    MQTT_VERSION_3x,            \
+    MQTT_VERSION_5x
+
+DEFINE_ENUM(MQTT_VERSION, MQTT_VERSION_VALUES);
+
 typedef void(*ON_MQTT_OPERATION_CALLBACK)(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_RESULT actionResult, const void* msgInfo, void* callbackCtx);
 typedef void(*ON_MQTT_ERROR_CALLBACK)(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_ERROR error, void* callbackCtx);
 typedef void(*ON_MQTT_MESSAGE_RECV_CALLBACK)(MQTT_MESSAGE_HANDLE msgHandle, void* callbackCtx);
 typedef void(*ON_MQTT_DISCONNECTED_CALLBACK)(void* callbackCtx);
 
-MOCKABLE_FUNCTION(, MQTT_CLIENT_HANDLE, mqtt_client_init, ON_MQTT_MESSAGE_RECV_CALLBACK, msgRecv, ON_MQTT_OPERATION_CALLBACK, opCallback, void*, opCallbackCtx, ON_MQTT_ERROR_CALLBACK, onErrorCallBack, void*, errorCBCtx);
+MOCKABLE_FUNCTION(, MQTT_CLIENT_HANDLE, mqtt_client_init, MQTT_VERSION, version, ON_MQTT_MESSAGE_RECV_CALLBACK, msgRecv, ON_MQTT_OPERATION_CALLBACK, opCallback, void*, opCallbackCtx, ON_MQTT_ERROR_CALLBACK, onErrorCallBack, void*, errorCBCtx);
 MOCKABLE_FUNCTION(, void, mqtt_client_deinit, MQTT_CLIENT_HANDLE, handle);
 
 MOCKABLE_FUNCTION(, int, mqtt_client_connect, MQTT_CLIENT_HANDLE, handle, XIO_HANDLE, xioHandle, MQTT_CLIENT_OPTIONS*, mqttOptions);

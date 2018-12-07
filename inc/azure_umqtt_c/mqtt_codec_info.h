@@ -29,7 +29,7 @@ typedef MQTT_CODEC_HANDLE(*pmqtt_codec_create)(ON_PACKET_COMPLETE_CALLBACK packe
 typedef void(*pmqtt_codec_destroy)(MQTT_CODEC_HANDLE handle);
 
 typedef BUFFER_HANDLE(*pmqtt_codec_connect)(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions);
-typedef BUFFER_HANDLE(*pmqtt_codec_disconnect)(MQTT_CODEC_HANDLE handle);
+typedef BUFFER_HANDLE(*pmqtt_codec_disconnect)(MQTT_CODEC_HANDLE handle, const DISCONNECT_INFO* info);
 typedef BUFFER_HANDLE(*pmqtt_codec_publish)(MQTT_CODEC_HANDLE handle, QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen);
 typedef BUFFER_HANDLE(*pmqtt_codec_publishAck)(uint16_t packetId);
 typedef BUFFER_HANDLE(*pmqtt_codec_publishReceived)(uint16_t packetId);

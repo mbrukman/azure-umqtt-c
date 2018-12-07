@@ -43,6 +43,18 @@ DEFINE_ENUM(CONTROL_PACKET_TYPE, CONTROL_PACKET_TYPE_VALUES)
 
 DEFINE_ENUM(QOS_VALUE, QOS_VALUE_VALUES)
 
+#define CODEC_STATE_VALUES      \
+    CODEC_STATE_FIXED_HEADER,   \
+    CODEC_STATE_VAR_HEADER,     \
+    CODEC_STATE_PAYLOAD
+
+DEFINE_ENUM(CODEC_STATE_RESULT, CODEC_STATE_VALUES);
+
+static const char* const FAILURE_MSG_CREATE_BUFFER = "Failure creating BUFFER";
+static const char* const TRUE_CONST = "true";
+static const char* const FALSE_CONST = "false";
+static const char* const BUFF_ALLOCATION_ERROR_MSG = "Failure allocating Buffer";
+
 typedef struct APP_PAYLOAD_TAG
 {
     uint8_t* message;
@@ -74,6 +86,12 @@ typedef enum CONNECT_RETURN_CODE_TAG
     CONN_REFUSED_UNKNOWN
 } CONNECT_RETURN_CODE;
 
+typedef enum DISCONNECT_REASON_CODE_TAG
+{
+    NORMAL_DISCONNECT = 0x00,
+    DISCONNECT_WITH_WILL_MSG = 0x04
+} DISCONNECT_REASON_CODE;
+
 typedef struct CONNECT_ACK_TAG
 {
     bool isSessionPresent;
@@ -102,6 +120,11 @@ typedef struct PUBLISH_ACK_TAG
 {
     uint16_t packetId;
 } PUBLISH_ACK;
+
+typedef struct DISCONNECT_INFO_TAG
+{
+    DISCONNECT_REASON_CODE reason_code;
+} DISCONNECT_INFO;
 
 #ifdef __cplusplus
 }
