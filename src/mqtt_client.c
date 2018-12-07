@@ -33,9 +33,7 @@ typedef struct MQTT_CLIENT_TAG
 {
     XIO_HANDLE xioHandle;
     
-    MQTTCODEC_HANDLE codec_handle;
-    MQTT_CODEC_HANDLE mqtt_codec_handle;
-    const CODEC_PROVIDER* codec_provider;
+    MQTT_CODEC_V3_HANDLE mqtt_codec_handle;
     char* trace_line;
     size_t trace_alloc;
 
@@ -1243,7 +1241,7 @@ int mqtt_client_disconnect(MQTT_CLIENT_HANDLE handle, ON_MQTT_DISCONNECTED_CALLB
     {
         if (mqtt_client->clientConnected)
         {
-            BUFFER_HANDLE disconnectPacket = codec_v3_disconnect(mqtt_client->codec_handle);
+            BUFFER_HANDLE disconnectPacket = codec_v3_disconnect(mqtt_client->mqtt_codec_handle);
             if (disconnectPacket == NULL)
             {
                 /*Codes_SRS_MQTT_CLIENT_07_011: [If any failure is encountered then mqtt_client_disconnect shall return a non-zero value.]*/

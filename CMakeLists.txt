@@ -68,8 +68,6 @@ set(source_c_files
 #these are the C headers
 set(source_h_files
     ./inc/azure_umqtt_c/mqtt_client.h
-    ./inc/azure_umqtt_c/mqtt_codec_info.h
-    ./inc/azure_umqtt_c/mqtt_codec_util.h
     ./inc/azure_umqtt_c/mqtt_codec_v3.h
     ./inc/azure_umqtt_c/mqtt_codec_v5.h
     ./inc/azure_umqtt_c/mqttconst.h

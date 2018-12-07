@@ -14,8 +14,15 @@ extern "C" {
 #include <stddef.h>
 #endif // __cplusplus
 
+#include "azure_c_shared_utility/buffer_.h"
 #include "azure_umqtt_c/mqttconst.h"
 
+#define NEXT_128_CHUNK                      0x80
+
+typedef void(*ON_PACKET_COMPLETE_CALLBACK)(void* context, CONTROL_PACKET_TYPE packet, int flags, BUFFER_HANDLE headerData);
+typedef void(*TRACE_LOG_VALUE)(void* context, const char* log_value, ...);
+
+extern int construct_fixed_header(BUFFER_HANDLE ctrl_packet, CONTROL_PACKET_TYPE packet_type, uint8_t flags);
 extern const char* retrieve_qos_value(QOS_VALUE value);
 extern void byteutil_writeByte(uint8_t** buffer, uint8_t value);
 extern void byteutil_writeInt(uint8_t** buffer, uint16_t value);

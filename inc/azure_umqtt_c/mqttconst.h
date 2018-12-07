@@ -124,6 +124,10 @@ typedef struct PUBLISH_ACK_TAG
 typedef struct DISCONNECT_INFO_TAG
 {
     DISCONNECT_REASON_CODE reason_code;
+    uint8_t session_expiry;
+    const char* reason;
+    char* user_property; // Array
+    const char* additional_server;
 } DISCONNECT_INFO;
 
 #ifdef __cplusplus

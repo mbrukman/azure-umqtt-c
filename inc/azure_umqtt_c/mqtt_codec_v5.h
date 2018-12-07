@@ -4,14 +4,33 @@
 #ifndef MQTT_CODEC_V5_H
 #define MQTT_CODEC_V5_H
 
+#include "azure_c_shared_utility/xio.h"
 #include "azure_c_shared_utility/umock_c_prod.h"
-#include "azure_umqtt_c/mqtt_codec_info.h"
+#include "azure_c_shared_utility/buffer_.h"
+
+#include "azure_umqtt_c/mqttconst.h"
+#include "azure_umqtt_c/mqtt_codec_util.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-extern const CODEC_PROVIDER* mqtt_codec_v5_get_provider(void);
+typedef struct CODEC_V5_INSTANCE_TAG* MQTT_CODEC_V5_HANDLE;
+
+MOCKABLE_FUNCTION(, MQTT_CODEC_V5_HANDLE, codec_v5_create, ON_PACKET_COMPLETE_CALLBACK, on_packet_complete_cb, void*, context);
+MOCKABLE_FUNCTION(, void, codec_v5_destroy, MQTT_CODEC_V5_HANDLE, handle);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_connect, MQTT_CODEC_V5_HANDLE, handle, const MQTT_CLIENT_OPTIONS*, mqttOptions);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_disconnect, MQTT_CODEC_V5_HANDLE, handle, const DISCONNECT_INFO*, info);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_publish, MQTT_CODEC_V5_HANDLE, handle, QOS_VALUE, qosValue, bool, duplicateMsg, bool, serverRetain, uint16_t, packetId, const char*, topicName, const uint8_t*, msgBuffer, size_t, buffLen);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_publishAck, uint16_t, packetId);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_publishReceived, uint16_t, packetId);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_publishRelease, uint16_t, packetId);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_publishComplete, uint16_t, packetId);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_ping);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_subscribe, MQTT_CODEC_V5_HANDLE, handle, uint16_t, packetId, SUBSCRIBE_PAYLOAD*, subscribeList, size_t, count);
+MOCKABLE_FUNCTION(, BUFFER_HANDLE, codec_v5_unsubscribe, MQTT_CODEC_V5_HANDLE, handle, uint16_t,  packetId, const char**, unsubscribeList, size_t, count);
+MOCKABLE_FUNCTION(, int, codec_v5_set_trace, MQTT_CODEC_V5_HANDLE, handle, TRACE_LOG_VALUE, trace_func, void*, trace_ctx);
+MOCKABLE_FUNCTION(, ON_BYTES_RECEIVED, codec_v5_get_recv_func);
 
 #ifdef __cplusplus
 }

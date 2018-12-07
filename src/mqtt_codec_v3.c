@@ -25,7 +25,6 @@
 #define WILL_FLAG_FLAG                      0x04
 #define CLEAN_SESSION_FLAG                  0x02
 
-#define NEXT_128_CHUNK                      0x80
 #define PUBLISH_DUP_FLAG                    0x8
 #define PUBLISH_QOS_EXACTLY_ONCE            0x4
 #define PUBLISH_QOS_AT_LEAST_ONCE           0x2
@@ -262,56 +261,6 @@ static BUFFER_HANDLE constructPublishReply(CONTROL_PACKET_TYPE type, uint8_t fla
     return result;
 }
 
-static int constructFixedHeader(BUFFER_HANDLE ctrlPacket, CONTROL_PACKET_TYPE packetType, uint8_t flags)
-{
-    int result;
-    if (ctrlPacket == NULL)
-    {
-        return __FAILURE__;
-    }
-    else
-    {
-        size_t packetLen = BUFFER_length(ctrlPacket);
-        uint8_t remainSize[4] ={ 0 };
-        size_t index = 0;
-
-        // Calculate the length of packet
-        do
-        {
-            uint8_t encode = packetLen % 128;
-            packetLen /= 128;
-            // if there are more data to encode, set the top bit of this byte
-            if (packetLen > 0)
-            {
-                encode |= NEXT_128_CHUNK;
-            }
-            remainSize[index++] = encode;
-        } while (packetLen > 0);
-
-        BUFFER_HANDLE fixedHeader = BUFFER_new();
-        if (fixedHeader == NULL)
-        {
-            result = __FAILURE__;
-        }
-        else if (BUFFER_pre_build(fixedHeader, index + 1) != 0)
-        {
-            BUFFER_delete(fixedHeader);
-            result = __FAILURE__;
-        }
-        else
-        {
-            uint8_t* iterator = BUFFER_u_char(fixedHeader);
-            *iterator = (uint8_t)packetType | flags;
-            iterator++;
-            (void)memcpy(iterator, remainSize, index);
-
-            result = BUFFER_prepend(ctrlPacket, fixedHeader);
-            BUFFER_delete(fixedHeader);
-        }
-    }
-    return result;
-}
-
 static int constructConnPayload(CODEC_V3_INSTANCE* mqtt_codec, BUFFER_HANDLE ctrlPacket, const MQTT_CLIENT_OPTIONS* mqttOptions)
 {
     int result = 0;
@@ -522,7 +471,7 @@ static void completePacketData(CODEC_V3_INSTANCE* codecData)
     }
 }
 
-MQTT_CODEC_HANDLE codec_v3_create(ON_PACKET_COMPLETE_CALLBACK packetComplete, void* callbackCtx)
+MQTT_CODEC_V3_HANDLE codec_v3_create(ON_PACKET_COMPLETE_CALLBACK packetComplete, void* callbackCtx)
 {
     CODEC_V3_INSTANCE* result;
     result = malloc(sizeof(CODEC_V3_INSTANCE));
@@ -538,10 +487,10 @@ MQTT_CODEC_HANDLE codec_v3_create(ON_PACKET_COMPLETE_CALLBACK packetComplete, vo
         memset(result->storeRemainLen, 0, 4 * sizeof(uint8_t));
         result->remainLenIndex = 0;
     }
-    return (MQTT_CODEC_HANDLE)result;
+    return (MQTT_CODEC_V3_HANDLE)result;
 }
 
-void codec_v3_destroy(MQTT_CODEC_HANDLE handle)
+void codec_v3_destroy(MQTT_CODEC_V3_HANDLE handle)
 {
     /* Codes_SRS_MQTT_CODEC_07_003: [If the handle parameter is NULL then mqtt_codec_destroy shall do nothing.] */
     if (handle != NULL)
@@ -553,7 +502,7 @@ void codec_v3_destroy(MQTT_CODEC_HANDLE handle)
     }
 }
 
-BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions)
+BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_V3_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_008: [If the parameters mqttOptions is NULL then mqtt_codec_connect shall return a null value.] */
@@ -589,7 +538,7 @@ BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIO
                 BUFFER_delete(result);
                 result = NULL;
             }
-            else if (constructFixedHeader(result, CONNECT_TYPE, 0) != 0)
+            else if (construct_fixed_header(result, CONNECT_TYPE, 0) != 0)
             {
                 /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
                 LogError("Failure constructing fixed");
@@ -601,7 +550,7 @@ BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIO
     return result;
 }
 
-BUFFER_HANDLE codec_v3_disconnect(MQTT_CODEC_HANDLE handle)
+BUFFER_HANDLE codec_v3_disconnect(MQTT_CODEC_V3_HANDLE handle)
 {
     (void)handle;
     /* Codes_SRS_MQTT_CODEC_07_011: [On success mqtt_codec_disconnect shall construct a BUFFER_HANDLE that represents a MQTT DISCONNECT packet.] */
@@ -619,7 +568,7 @@ BUFFER_HANDLE codec_v3_disconnect(MQTT_CODEC_HANDLE handle)
     return result;
 }
 
-BUFFER_HANDLE codec_v3_publish(MQTT_CODEC_HANDLE handle, QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen)
+BUFFER_HANDLE codec_v3_publish(MQTT_CODEC_V3_HANDLE handle, QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_005: [If the parameters topicName is NULL then mqtt_codec_publish shall return NULL.] */
@@ -715,7 +664,7 @@ BUFFER_HANDLE codec_v3_publish(MQTT_CODEC_HANDLE handle, QOS_VALUE qosValue, boo
 
                 if (result != NULL)
                 {
-                    if (constructFixedHeader(result, PUBLISH_TYPE, headerFlags) != 0)
+                    if (construct_fixed_header(result, PUBLISH_TYPE, headerFlags) != 0)
                     {
                         /* Codes_SRS_MQTT_CODEC_07_006: [If any error is encountered then mqtt_codec_publish shall return NULL.] */
                         BUFFER_delete(result);
@@ -773,7 +722,7 @@ BUFFER_HANDLE codec_v3_ping(void)
     return result;
 }
 
-BUFFER_HANDLE codec_v3_subscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count)
+BUFFER_HANDLE codec_v3_subscribe(MQTT_CODEC_V3_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_023: [If the parameters subscribeList is NULL or if count is 0 then mqtt_codec_subscribe shall return NULL.] */
@@ -811,7 +760,7 @@ BUFFER_HANDLE codec_v3_subscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, SU
                 BUFFER_delete(result);
                 result = NULL;
             }
-            else if (constructFixedHeader(result, SUBSCRIBE_TYPE, SUBSCRIBE_FIXED_HEADER_FLAG) != 0)
+            else if (construct_fixed_header(result, SUBSCRIBE_TYPE, SUBSCRIBE_FIXED_HEADER_FLAG) != 0)
             {
                 /* Codes_SRS_MQTT_CODEC_07_025: [If any error is encountered then mqtt_codec_subscribe shall return NULL.] */
                 BUFFER_delete(result);
@@ -822,7 +771,7 @@ BUFFER_HANDLE codec_v3_subscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, SU
     return result;
 }
 
-BUFFER_HANDLE codec_v3_unsubscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count)
+BUFFER_HANDLE codec_v3_unsubscribe(MQTT_CODEC_V3_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_027: [If the parameters unsubscribeList is NULL or if count is 0 then mqtt_codec_unsubscribe shall return NULL.] */
@@ -859,7 +808,7 @@ BUFFER_HANDLE codec_v3_unsubscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, 
                 BUFFER_delete(result);
                 result = NULL;
             }
-            else if (constructFixedHeader(result, UNSUBSCRIBE_TYPE, UNSUBSCRIBE_FIXED_HEADER_FLAG) != 0)
+            else if (construct_fixed_header(result, UNSUBSCRIBE_TYPE, UNSUBSCRIBE_FIXED_HEADER_FLAG) != 0)
             {
                 /* Codes_SRS_MQTT_CODEC_07_029: [If any error is encountered then mqtt_codec_unsubscribe shall return NULL.] */
                 BUFFER_delete(result);
@@ -951,7 +900,7 @@ static void on_bytes_recv(void* context, const unsigned char* buffer, size_t siz
     }
 }
 
-int codec_v3_set_trace(MQTT_CODEC_HANDLE handle, TRACE_LOG_VALUE trace_func, void* trace_ctx)
+int codec_v3_set_trace(MQTT_CODEC_V3_HANDLE handle, TRACE_LOG_VALUE trace_func, void* trace_ctx)
 {
     int result;
     if (handle == NULL)

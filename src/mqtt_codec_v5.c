@@ -70,7 +70,7 @@ static void on_bytes_recv(void* context, const unsigned char* buffer, size_t siz
     }
 }
 
-static MQTT_CODEC_HANDLE codec_v5_create(ON_PACKET_COMPLETE_CALLBACK on_packet_complete_cb, void* context)
+MQTT_CODEC_V5_HANDLE codec_v5_create(ON_PACKET_COMPLETE_CALLBACK on_packet_complete_cb, void* context)
 {
     (void)on_packet_complete_cb;
     (void)context;
@@ -85,10 +85,10 @@ static MQTT_CODEC_HANDLE codec_v5_create(ON_PACKET_COMPLETE_CALLBACK on_packet_c
         memset(result, 0, sizeof(CODEC_V5_INSTANCE));
         result->currPacket = UNKNOWN_TYPE;
     }
-    return (MQTT_CODEC_HANDLE)result;
+    return (MQTT_CODEC_V5_HANDLE)result;
 }
 
-static void codec_v5_destroy(MQTT_CODEC_HANDLE handle)
+void codec_v5_destroy(MQTT_CODEC_V5_HANDLE handle)
 {
     /* Codes_SRS_MQTT_CODEC_07_003: [If the handle parameter is NULL then codec_v5_destroy shall do nothing.] */
     if (handle != NULL)
@@ -99,7 +99,7 @@ static void codec_v5_destroy(MQTT_CODEC_HANDLE handle)
     }
 }
 
-BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions)
+BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_V5_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_008: [If the parameters mqttOptions is NULL then codec_v5_connect shall return a null value.] */
@@ -114,19 +114,23 @@ BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_HANDLE handle, const MQTT_CLIENT_OPTIO
     return result;
 }
 
-BUFFER_HANDLE codec_v5_disconnect(MQTT_CODEC_HANDLE handle, const DISCONNECT_INFO* info)
+BUFFER_HANDLE codec_v5_disconnect(MQTT_CODEC_V5_HANDLE handle, const DISCONNECT_INFO* info)
 {
     (void)handle;
     (void)info;
     /* Codes_SRS_MQTT_CODEC_07_011: [On success codec_v5_disconnect shall construct a BUFFER_HANDLE that represents a MQTT DISCONNECT packet.] */
-    BUFFER_HANDLE result = BUFFER_new();
-    if (result != NULL)
+    BUFFER_HANDLE result = BUFFER_create_with_size(2);
+    if (result == NULL)
+    {
+        LogError("Failure creating BUFFER");
+    }
+    else
     {
     }
     return result;
 }
 
-BUFFER_HANDLE codec_v5_publish(MQTT_CODEC_HANDLE handle, QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen)
+BUFFER_HANDLE codec_v5_publish(MQTT_CODEC_V5_HANDLE handle, QOS_VALUE qosValue, bool duplicateMsg, bool serverRetain, uint16_t packetId, const char* topicName, const uint8_t* msgBuffer, size_t buffLen)
 {
     (void)qosValue;
     (void)duplicateMsg;
@@ -206,7 +210,7 @@ BUFFER_HANDLE codec_v5_ping(void)
     return result;
 }
 
-BUFFER_HANDLE codec_v5_subscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count)
+BUFFER_HANDLE codec_v5_subscribe(MQTT_CODEC_V5_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count)
 {
     (void)packetId;
     (void)subscribeList;
@@ -229,7 +233,7 @@ BUFFER_HANDLE codec_v5_subscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, SU
     return result;
 }
 
-BUFFER_HANDLE codec_v5_unsubscribe(MQTT_CODEC_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count)
+BUFFER_HANDLE codec_v5_unsubscribe(MQTT_CODEC_V5_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count)
 {
     (void)packetId;
     (void)unsubscribeList;
@@ -253,7 +257,7 @@ ON_BYTES_RECEIVED codec_v5_get_recv_func(void)
     return on_bytes_recv;
 }
 
-static int codec_v5_set_trace(MQTT_CODEC_HANDLE handle, TRACE_LOG_VALUE trace_func, void* trace_ctx)
+int codec_v5_set_trace(MQTT_CODEC_V5_HANDLE handle, TRACE_LOG_VALUE trace_func, void* trace_ctx)
 {
     int result;
     if (handle == NULL)
@@ -268,27 +272,4 @@ static int codec_v5_set_trace(MQTT_CODEC_HANDLE handle, TRACE_LOG_VALUE trace_fu
         result = 0;
     }
     return result;
-}
-
-static CODEC_PROVIDER codec_provider = 
-{
-    codec_v5_create,
-    codec_v5_destroy,
-    codec_v5_connect,
-    codec_v5_disconnect,
-    codec_v5_publish,
-    codec_v5_publishAck,
-    codec_v5_publishReceived,
-    codec_v5_publishRelease,
-    codec_v5_publishComplete,
-    codec_v5_ping,
-    codec_v5_subscribe,
-    codec_v5_unsubscribe,
-    codec_v5_get_recv_func,
-    codec_v5_set_trace
-};
-
-const CODEC_PROVIDER* mqtt_codec_v5_get_provider(void)
-{
-    return &codec_provider;
 }
