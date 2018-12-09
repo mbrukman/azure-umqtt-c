@@ -18,7 +18,7 @@ extern "C" {
 #endif // __cplusplus
 
 
-typedef struct MQTT_CLIENT_TAG* MQTT_CLIENT_HANDLE;
+typedef struct MQTT_CLIENT_V5_TAG* MQTT_CLIENT_V5_HANDLE;
 
 #define MQTT_CLIENT_EVENT_VALUES     \
     MQTT_CLIENT_ON_CONNACK,          \
@@ -33,41 +33,35 @@ typedef struct MQTT_CLIENT_TAG* MQTT_CLIENT_HANDLE;
 
 DEFINE_ENUM(MQTT_CLIENT_EVENT_RESULT, MQTT_CLIENT_EVENT_VALUES);
 
-#define MQTT_CLIENT_EVENT_ERROR_VALUES     \
-    MQTT_CLIENT_CONNECTION_ERROR,          \
-    MQTT_CLIENT_PARSE_ERROR,               \
-    MQTT_CLIENT_MEMORY_ERROR,              \
-    MQTT_CLIENT_COMMUNICATION_ERROR,       \
-    MQTT_CLIENT_NO_PING_RESPONSE,          \
-    MQTT_CLIENT_UNKNOWN_ERROR
+#define MQTT_V5_CLIENT_EVENT_ERROR_VALUES     \
+    MQTT_V5_CLIENT_CONNECTION_ERROR,          \
+    MQTT_V5_CLIENT_PARSE_ERROR,               \
+    MQTT_V5_CLIENT_MEMORY_ERROR,              \
+    MQTT_V5_CLIENT_COMMUNICATION_ERROR,       \
+    MQTT_V5_CLIENT_NO_PING_RESPONSE,          \
+    MQTT_V5_CLIENT_UNKNOWN_ERROR
 
-DEFINE_ENUM(MQTT_CLIENT_EVENT_ERROR, MQTT_CLIENT_EVENT_ERROR_VALUES);
+DEFINE_ENUM(MQTT_V5_CLIENT_EVENT_ERROR, MQTT_V5_CLIENT_EVENT_ERROR_VALUES);
 
-#define MQTT_VERSION_VALUES     \
-    MQTT_VERSION_3x,            \
-    MQTT_VERSION_5x
-
-DEFINE_ENUM(MQTT_VERSION, MQTT_VERSION_VALUES);
-
-typedef void(*ON_MQTT_OPERATION_CALLBACK)(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_RESULT actionResult, const void* msgInfo, void* callbackCtx);
-typedef void(*ON_MQTT_ERROR_CALLBACK)(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_ERROR error, void* callbackCtx);
+typedef void(*ON_MQTT_OPERATION_CALLBACK)(MQTT_CLIENT_V5_HANDLE handle, MQTT_CLIENT_EVENT_RESULT actionResult, const void* msgInfo, void* callbackCtx);
+typedef void(*ON_MQTT_V5_ERROR_CALLBACK)(MQTT_V5_CLIENT_EVENT_ERROR error, void* callbackCtx);
 typedef void(*ON_MQTT_MESSAGE_RECV_CALLBACK)(MQTT_MESSAGE_HANDLE msgHandle, void* callbackCtx);
 typedef void(*ON_MQTT_DISCONNECTED_CALLBACK)(void* callbackCtx);
 
-MOCKABLE_FUNCTION(, MQTT_CLIENT_HANDLE, mqtt_client_init, MQTT_VERSION, version, ON_MQTT_MESSAGE_RECV_CALLBACK, msgRecv, ON_MQTT_OPERATION_CALLBACK, opCallback, void*, opCallbackCtx, ON_MQTT_ERROR_CALLBACK, onErrorCallBack, void*, errorCBCtx);
-MOCKABLE_FUNCTION(, void, mqtt_client_deinit, MQTT_CLIENT_HANDLE, handle);
+MOCKABLE_FUNCTION(, MQTT_CLIENT_V5_HANDLE, mqtt_client_v5_create, ON_MQTT_MESSAGE_RECV_CALLBACK, msgRecv, ON_MQTT_OPERATION_CALLBACK, opCallback, void*, opCallbackCtx, MQTT_V5_CLIENT_EVENT_ERROR, onErrorCallBack, void*, errorCBCtx);
+MOCKABLE_FUNCTION(, void, mqtt_client_v5_destroy, MQTT_CLIENT_V5_HANDLE, handle);
 
-MOCKABLE_FUNCTION(, int, mqtt_client_connect, MQTT_CLIENT_HANDLE, handle, XIO_HANDLE, xioHandle, MQTT_CLIENT_OPTIONS*, mqttOptions);
-MOCKABLE_FUNCTION(, int, mqtt_client_disconnect, MQTT_CLIENT_HANDLE, handle, ON_MQTT_DISCONNECTED_CALLBACK, callback, void*, ctx);
+MOCKABLE_FUNCTION(, int, mqtt_client_v5_connect, MQTT_CLIENT_V5_HANDLE, handle, XIO_HANDLE, xioHandle, MQTT_CLIENT_OPTIONS*, mqttOptions);
+MOCKABLE_FUNCTION(, int, mqtt_client_v5_disconnect, MQTT_CLIENT_V5_HANDLE, handle, ON_MQTT_DISCONNECTED_CALLBACK, callback, void*, ctx);
 
-MOCKABLE_FUNCTION(, int, mqtt_client_subscribe, MQTT_CLIENT_HANDLE, handle, uint16_t, packetId, SUBSCRIBE_PAYLOAD*, subscribeList, size_t, count);
-MOCKABLE_FUNCTION(, int, mqtt_client_unsubscribe, MQTT_CLIENT_HANDLE, handle, uint16_t, packetId, const char**, unsubscribeList, size_t, count);
+MOCKABLE_FUNCTION(, int, mqtt_client_v5_subscribe, MQTT_CLIENT_V5_HANDLE, handle, uint16_t, packetId, SUBSCRIBE_PAYLOAD*, subscribeList, size_t, count);
+MOCKABLE_FUNCTION(, int, mqtt_client_v5_unsubscribe, MQTT_CLIENT_V5_HANDLE, handle, uint16_t, packetId, const char**, unsubscribeList, size_t, count);
 
-MOCKABLE_FUNCTION(, int, mqtt_client_publish, MQTT_CLIENT_HANDLE, handle, MQTT_MESSAGE_HANDLE, msgHandle);
+MOCKABLE_FUNCTION(, int, mqtt_client_v5_publish, MQTT_CLIENT_V5_HANDLE, handle, MQTT_MESSAGE_HANDLE, msgHandle);
 
-MOCKABLE_FUNCTION(, void, mqtt_client_dowork, MQTT_CLIENT_HANDLE, handle);
+MOCKABLE_FUNCTION(, void, mqtt_client_v5_dowork, MQTT_CLIENT_V5_HANDLE, handle);
 
-MOCKABLE_FUNCTION(, void, mqtt_client_set_trace, MQTT_CLIENT_HANDLE, handle, bool, traceOn, bool, rawBytesOn);
+MOCKABLE_FUNCTION(, void, mqtt_client_v5_set_trace, MQTT_CLIENT_V5_HANDLE, handle, bool, traceOn, bool, rawBytesOn);
 
 #ifdef __cplusplus
 }

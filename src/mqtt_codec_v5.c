@@ -11,6 +11,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 
 #include "azure_umqtt_c/mqtt_codec_v5.h"
+#include "azure_umqtt_c/mqtt_properties.h"
 
 #include <inttypes.h>
 
@@ -55,7 +56,7 @@ typedef struct PUBLISH_HEADER_INFO_TAG
     QOS_VALUE qualityOfServiceValue;
 } PUBLISH_HEADER_INFO;
 
-static int construct_connect_properties(BUFFER_HANDLE conn_packet)
+static int construct_message_properties(BUFFER_HANDLE conn_packet, MQTT_PROPERTY_HANDLE prop_handle)
 {
     int result = 0;
     return result;
@@ -103,7 +104,7 @@ void codec_v5_destroy(MQTT_CODEC_V5_HANDLE handle)
     }
 }
 
-BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_V5_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqtt_options)
+BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_V5_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqtt_options, MQTT_PROPERTY_HANDLE prop_handle)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_008: [If the parameters mqttOptions is NULL then codec_v5_connect shall return a null value.] */
@@ -123,7 +124,7 @@ BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_V5_HANDLE handle, const MQTT_CLIENT_OP
         {
             LogError("Failure creating variable header");
         }
-        else if (construct_connect_properties(result) != 0)
+        else if (construct_message_properties(result, prop_handle) != 0)
         {
             LogError("Failure constructing connect properties");
             BUFFER_delete(result);

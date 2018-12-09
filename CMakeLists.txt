@@ -59,6 +59,7 @@ set(run_unittests ${original_run_unittests})
 #these are the C source files
 set(source_c_files
     ./src/mqtt_client.c
+    ./src/mqtt_client_v5.c
     ./src/mqtt_codec_v3.c
     ./src/mqtt_codec_v5.c
     ./src/mqtt_codec_util.c
@@ -68,6 +69,7 @@ set(source_c_files
 #these are the C headers
 set(source_h_files
     ./inc/azure_umqtt_c/mqtt_client.h
+    ./inc/azure_umqtt_c/mqtt_client_v5.h
     ./inc/azure_umqtt_c/mqtt_codec_v3.h
     ./inc/azure_umqtt_c/mqtt_codec_v5.h
     ./inc/azure_umqtt_c/mqttconst.h

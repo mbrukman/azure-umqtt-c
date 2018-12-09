@@ -36,6 +36,32 @@ BUFFER_HANDLE construct_connect_var_header(TRACE_LOG_VALUE trace_func, void* tra
     return result;
 }
 
+int encode_variable_byte_integer(uint8_t stream_bytes[4], size_t* pos, uint32_t* vbi_value)
+{
+    int result = 0;
+    uint32_t multiplier = 1;
+    size_t index = 0;
+    uint8_t encoded_byte = 0;
+    uint32_t total_len = 0;
+    do
+    {
+        encoded_byte = stream_bytes[index];
+        total_len += (encoded_byte & 127) * multiplier;
+        multiplier *= NEXT_128_CHUNK;
+        if (multiplier > 128 * 128 * 128)
+        {
+            result = __FAILURE__;
+            break;
+        }
+    } while ((encoded_byte & NEXT_128_CHUNK) != 0);
+    if (result == 0)
+    {
+        *vbi_value = total_len;
+        *pos = index;
+    }
+    return result;
+}
+
 int construct_fixed_header(BUFFER_HANDLE ctrl_packet, CONTROL_PACKET_TYPE packet_type, uint8_t flags)
 {
     int result;

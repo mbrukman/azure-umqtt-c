@@ -4,13 +4,22 @@
 #include <stdlib.h>
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/xlogging.h"
+#include "azure_c_shared_utility/buffer_.h"
 
 #include "azure_umqtt_c/mqtt_properties.h"
 
 typedef struct MQTT_PROP_ITEM_TAG
 {
     MQTT_PROPERTY_TYPE type;
-    void* value;
+    union
+    {
+        uint8_t byte_value;
+        uint16_t two_byte_value;
+        uint32_t four_byte_value;
+        char* string_value;
+        BUFFER_HANDLE binary_value;
+
+    } value_item;
 } MQTT_PROP_ITEM;
 
 typedef struct MQTT_PROPERTY_TAG
@@ -60,7 +69,14 @@ static int get_prop_value_type(MQTT_PROPERTY_TYPE prop_type)
 MQTT_PROPERTY_HANDLE mqtt_prop_create(void)
 {
     MQTT_PROPERTY* result;
-    result = NULL;
+    if ((result = malloc(sizeof(MQTT_PROPERTY))) == NULL)
+    {
+        LogError("failure allocating property object");
+    }
+    else
+    {
+
+    }
     return result;
 }
 
@@ -68,7 +84,24 @@ void mqtt_prop_destroy(MQTT_PROPERTY_HANDLE handle)
 {
     if (handle != NULL)
     {
-
+        free(handle);
     }
 }
 
+int mqtt_prop_add_byte_property(MQTT_PROPERTY_TYPE type, uint8_t value)
+{
+    int result;
+    MQTT_PROP_ITEM* prop_item;
+    if ((prop_item = (MQTT_PROP_ITEM*)malloc(sizeof(MQTT_PROP_ITEM))) == NULL)
+    {
+        LogError("failure allocating property item");
+        result = __FAILURE__;
+    }
+    else
+    {
+        prop_item->type = type;
+        prop_item->value_item.byte_value = value;
+        result = 0;
+    }
+    return result;
+}
