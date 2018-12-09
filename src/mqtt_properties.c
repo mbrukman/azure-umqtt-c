@@ -24,46 +24,53 @@ typedef struct MQTT_PROP_ITEM_TAG
 
 typedef struct MQTT_PROPERTY_TAG
 {
+    size_t cnt;
 } MQTT_PROPERTY;
 
 typedef struct PROPERTY_ITERATOR_TAG
 {
     size_t index;
+    MQTT_PROP_ITEM* curr_item;
 } PROPERTY_ITERATOR;
 
-static int get_prop_value_type(MQTT_PROPERTY_TYPE prop_type)
+static MQTT_PROP_VALUE_TYPE get_prop_value_type(MQTT_PROPERTY_TYPE prop_type)
 {
-    return 0;
-/*    switch (prop_type)
+    MQTT_PROP_VALUE_TYPE result;
+    switch (prop_type)
     {
-    PAYLOAD_FORMAT_INDICATOR
-    MSG_EXPIRY_INTERVAL
-    CONTENT_TYPE
-    RESPONSE_TOPIC
-    CORRELATION_DATA
-    SUBSCRIPTION_ID
-    SESSION_EXPIRY_INTERVAL
-    ASSIGNED_CLIENT_ID
-    SERVER_KEEP_ALIVE
-    AUTHENTICATION_METHOD
-    AUTHENTICATION_DATA
-    REQUEST_PROBLEM_INFO
-    WILL_DELAY_INTERVAL
-    REQUEST_RESPONSE_INFO
-    RESPONSE_INFO
-    SERVER_REFERENCE
-    REASON_STRING
-    RECEIVE_MAXIMUM
-    TOPIC_ALIAS_MAXIMUM
-    TOPIC_ALIAS
-    MAXIMUM_QOS
-    RETAIN_AVAILABLE
-    USER_PROPERTY
-    MAXIMUM_PACKET_SIZE
-    WILDCARD_SUB_AVAILABLE
-    SUBSCRIPTION_ID_AVAILABLE
-    SHARED_SUB_AVAILABLE
-    }*/
+        case PAYLOAD_FORMAT_INDICATOR:
+        case MSG_EXPIRY_INTERVAL:
+        case CONTENT_TYPE:
+        case RESPONSE_TOPIC:
+        case CORRELATION_DATA:
+        case SUBSCRIPTION_ID:
+        case SESSION_EXPIRY_INTERVAL:
+        case ASSIGNED_CLIENT_ID:
+        case SERVER_KEEP_ALIVE:
+        case AUTHENTICATION_METHOD:
+        case AUTHENTICATION_DATA:
+        case REQUEST_PROBLEM_INFO:
+        case WILL_DELAY_INTERVAL:
+        case REQUEST_RESPONSE_INFO:
+        case RESPONSE_INFO:
+        case SERVER_REFERENCE:
+        case REASON_STRING:
+        case RECEIVE_MAXIMUM:
+        case TOPIC_ALIAS_MAXIMUM:
+        case TOPIC_ALIAS:
+        case MAXIMUM_QOS:
+        case RETAIN_AVAILABLE:
+        case USER_PROPERTY:
+        case MAXIMUM_PACKET_SIZE:
+        case WILDCARD_SUB_AVAILABLE:
+        case SUBSCRIPTION_ID_AVAILABLE:
+        case SHARED_SUB_AVAILABLE:
+            break;
+        default:
+            result = VALUE_TYPE_UNKNOWN;
+            break;
+    }
+    return result;
 }
 
 MQTT_PROPERTY_HANDLE mqtt_prop_create(void)

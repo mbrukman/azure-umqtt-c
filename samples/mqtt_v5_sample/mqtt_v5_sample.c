@@ -147,20 +147,19 @@ static void OnOperationComplete(MQTT_CLIENT_V5_HANDLE handle, MQTT_CLIENT_EVENT_
     }
 }
 
-static void OnErrorComplete(MQTT_CLIENT_V5_HANDLE handle, MQTT_CLIENT_EVENT_ERROR error, void* callbackCtx)
+static void OnErrorComplete(MQTT_V5_CLIENT_EVENT_ERROR error, void* callbackCtx)
 {
     (void)callbackCtx;
-    (void)handle;
     switch (error)
     {
-    case MQTT_CLIENT_CONNECTION_ERROR:
-    case MQTT_CLIENT_PARSE_ERROR:
-    case MQTT_CLIENT_MEMORY_ERROR:
-    case MQTT_CLIENT_COMMUNICATION_ERROR:
-    case MQTT_CLIENT_NO_PING_RESPONSE:
-    case MQTT_CLIENT_UNKNOWN_ERROR:
-        g_continue = false;
-        break;
+        case MQTT_V5_CLIENT_CONNECTION_ERROR:
+        case MQTT_V5_CLIENT_PARSE_ERROR:
+        case MQTT_V5_CLIENT_MEMORY_ERROR:
+        case MQTT_V5_CLIENT_COMMUNICATION_ERROR:
+        case MQTT_V5_CLIENT_NO_PING_RESPONSE:
+        case MQTT_V5_CLIENT_UNKNOWN_ERROR:
+            g_continue = false;
+            break;
     }
 }
 

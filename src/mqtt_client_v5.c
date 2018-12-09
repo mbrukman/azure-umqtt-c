@@ -17,7 +17,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/buffer_.h"
 
-#include "azure_umqtt_c/mqtt_client.h"
+#include "azure_umqtt_c/mqtt_client_v5.h"
 #include "azure_umqtt_c/mqtt_codec_v5.h"
 
 #define VARIABLE_HEADER_OFFSET          2
@@ -44,7 +44,7 @@ typedef struct MQTT_CLIENT_V5_TAG
     ON_MQTT_OPERATION_CALLBACK operation_cb;
     ON_MQTT_MESSAGE_RECV_CALLBACK msg_recv_cb;
     void* ctx;
-    ON_MQTT_ERROR_CALLBACK on_error_cb;
+    ON_MQTT_V5_ERROR_CALLBACK on_error_cb;
     void* error_cb_ctx;
     ON_MQTT_DISCONNECTED_CALLBACK disconnect_cb;
     void* disconnect_ctx;
@@ -99,11 +99,11 @@ static void close_connection(MQTT_CLIENT_V5* mqtt_client)
     mqtt_client->xioHandle = NULL;
 }
 
-static void set_error_callback(MQTT_CLIENT_V5* mqtt_client, MQTT_CLIENT_EVENT_ERROR error_type)
+static void set_error_callback(MQTT_CLIENT_V5* mqtt_client, MQTT_V5_CLIENT_EVENT_ERROR error_type)
 {
     if (mqtt_client->on_error_cb)
     {
-        mqtt_client->on_error_cb(mqtt_client, error_type, mqtt_client->error_cb_ctx);
+        mqtt_client->on_error_cb(error_type, mqtt_client->error_cb_ctx);
     }
     close_connection(mqtt_client);
 }
@@ -201,7 +201,7 @@ static void sendComplete(void* context, IO_SEND_RESULT send_result)
         else if (send_result == IO_SEND_ERROR)
         {
             LogError("MQTT Send Complete Failure send_result: %d", (int)send_result);
-            set_error_callback(mqtt_client, MQTT_CLIENT_COMMUNICATION_ERROR);
+            set_error_callback(mqtt_client, MQTT_V5_CLIENT_COMMUNICATION_ERROR);
         }
     }
     else
@@ -402,7 +402,7 @@ static void onOpenComplete(void* context, IO_OPEN_RESULT open_result)
             mqtt_client->socketConnected = true;
 
             // Send the Connect packet
-            BUFFER_HANDLE connPacket = codec_v5_connect(mqtt_client->mqtt_codec_handle, &mqtt_client->mqttOptions);
+            BUFFER_HANDLE connPacket = codec_v5_connect(mqtt_client->mqtt_codec_handle, &mqtt_client->mqttOptions, NULL);
             if (connPacket == NULL)
             {
                 LogError("Error: mqtt_codec_connect failed");
@@ -424,9 +424,9 @@ static void onOpenComplete(void* context, IO_OPEN_RESULT open_result)
         }
         else
         {
-            if (mqtt_client->socketConnected == false && mqtt_client->on_error_cb)
+            if (mqtt_client->socketConnected == false)
             {
-                mqtt_client->on_error_cb(mqtt_client, MQTT_CLIENT_CONNECTION_ERROR, mqtt_client->error_cb_ctx);
+                set_error_callback(mqtt_client, MQTT_V5_CLIENT_CONNECTION_ERROR);
             }
             close_connection(mqtt_client);
         }
@@ -444,7 +444,7 @@ static void onIoError(void* context)
     {
         /*Codes_SRS_MQTT_CLIENT_07_032: [If the actionResult parameter is of type MQTT_CLIENT_ON_DISCONNECT the the msgInfo value shall be NULL.]*/
         /* Codes_SRS_MQTT_CLIENT_07_036: [ If an error is encountered by the ioHandle the mqtt_client shall call xio_close. ] */
-        set_error_callback(mqtt_client, MQTT_CLIENT_CONNECTION_ERROR);
+        set_error_callback(mqtt_client, MQTT_V5_CLIENT_CONNECTION_ERROR);
     }
     else
     {
@@ -576,7 +576,7 @@ static int cloneMqttOptions(MQTT_CLIENT_V5* mqtt_client, const MQTT_CLIENT_OPTIO
     }
     if (result == 0)
     {
-        mqtt_client->mqttOptions.keep_alive_interval = mqttOptions->keepAliveInterval;
+        mqtt_client->mqttOptions.keepAliveInterval = mqttOptions->keepAliveInterval;
         mqtt_client->mqttOptions.messageRetain = mqttOptions->messageRetain;
         mqtt_client->mqttOptions.useCleanSession = mqttOptions->useCleanSession;
         mqtt_client->mqttOptions.qualityOfServiceValue = mqttOptions->qualityOfServiceValue;
@@ -601,7 +601,7 @@ static void ProcessPublishMessage(MQTT_CLIENT_V5* mqtt_client, uint8_t* initialP
     if (topicName == NULL)
     {
         LogError("Publish MSG: failure reading topic name");
-        set_error_callback(mqtt_client, MQTT_CLIENT_PARSE_ERROR);
+        set_error_callback(mqtt_client, MQTT_V5_CLIENT_PARSE_ERROR);
     }
     else
     {
@@ -629,7 +629,7 @@ static void ProcessPublishMessage(MQTT_CLIENT_V5* mqtt_client, uint8_t* initialP
         if ((qosValue != DELIVER_AT_MOST_ONCE) && (packetId == 0))
         {
             LogError("Publish MSG: packetId=0, invalid");
-            set_error_callback(mqtt_client, MQTT_CLIENT_PARSE_ERROR);
+            set_error_callback(mqtt_client, MQTT_V5_CLIENT_PARSE_ERROR);
         }
         else
         {
@@ -639,13 +639,13 @@ static void ProcessPublishMessage(MQTT_CLIENT_V5* mqtt_client, uint8_t* initialP
             if (msgHandle == NULL)
             {
                 LogError("failure in mqttmessage_create");
-                set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+                set_error_callback(mqtt_client, MQTT_V5_CLIENT_MEMORY_ERROR);
             }
             else if (mqttmessage_setIsDuplicateMsg(msgHandle, isDuplicateMsg) != 0 ||
                      mqttmessage_setIsRetained(msgHandle, isRetainMsg) != 0)
             {
                 LogError("failure setting mqtt message property");
-                set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+                set_error_callback(mqtt_client, MQTT_V5_CLIENT_MEMORY_ERROR);
             }
             else
             {
@@ -665,7 +665,7 @@ static void ProcessPublishMessage(MQTT_CLIENT_V5* mqtt_client, uint8_t* initialP
                     if (pubRel == NULL)
                     {
                         LogError("Failed to allocate publish receive message.");
-                        set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+                        set_error_callback(mqtt_client, MQTT_V5_CLIENT_MEMORY_ERROR);
                     }
                 }
                 else if (qosValue == DELIVER_AT_LEAST_ONCE)
@@ -674,7 +674,7 @@ static void ProcessPublishMessage(MQTT_CLIENT_V5* mqtt_client, uint8_t* initialP
                     if (pubRel == NULL)
                     {
                         LogError("Failed to allocate publish ack message.");
-                        set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+                        set_error_callback(mqtt_client, MQTT_V5_CLIENT_MEMORY_ERROR);
                     }
                 }
                 if (pubRel != NULL)
@@ -777,7 +777,7 @@ static void recvCompleteCallback(void* context, CONTROL_PACKET_TYPE packet, int 
                         if (pubRel == NULL)
                         {
                             LogError("Failed to allocate publish release message.");
-                            set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+                            set_error_callback(mqtt_client, MQTT_V5_CLIENT_MEMORY_ERROR);
                         }
                     }
                     else if (packet == PUBREL_TYPE)
@@ -786,7 +786,7 @@ static void recvCompleteCallback(void* context, CONTROL_PACKET_TYPE packet, int 
                         if (pubRel == NULL)
                         {
                             LogError("Failed to allocate publish complete message.");
-                            set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+                            set_error_callback(mqtt_client, MQTT_V5_CLIENT_MEMORY_ERROR);
                         }
                     }
                     if (pubRel != NULL)
@@ -846,7 +846,7 @@ static void recvCompleteCallback(void* context, CONTROL_PACKET_TYPE packet, int 
                     else
                     {
                         LogError("allocation of quality of service value failed.");
-                        set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+                        set_error_callback(mqtt_client, MQTT_V5_CLIENT_MEMORY_ERROR);
                     }
                     break;
                 }
@@ -975,7 +975,7 @@ static int init_codec_provider_info(MQTT_CLIENT_V5* mqtt_client)
     return result;
 }
 
-MQTT_CLIENT_HANDLE mqtt_client_v5_create(ON_MQTT_MESSAGE_RECV_CALLBACK msgRecv, ON_MQTT_OPERATION_CALLBACK operation_cb, void* opCallbackCtx, MQTT_V5_CLIENT_EVENT_ERROR onErrorCallBack, void* error_cb_ctx)
+MQTT_CLIENT_V5_HANDLE mqtt_client_v5_create(ON_MQTT_MESSAGE_RECV_CALLBACK msgRecv, ON_MQTT_OPERATION_CALLBACK operation_cb, void* opCallbackCtx, ON_MQTT_V5_ERROR_CALLBACK on_error_cb, void* error_cb_ctx)
 {
     MQTT_CLIENT_V5* result;
     /*Codes_SRS_MQTT_CLIENT_07_001: [If the parameters ON_MQTT_MESSAGE_RECV_CALLBACK is NULL then mqttclient_init shall return NULL.]*/
@@ -1000,7 +1000,7 @@ MQTT_CLIENT_HANDLE mqtt_client_v5_create(ON_MQTT_MESSAGE_RECV_CALLBACK msgRecv, 
             result->operation_cb = operation_cb;
             result->ctx = opCallbackCtx;
             result->msg_recv_cb = msgRecv;
-            result->on_error_cb = onErrorCallBack;
+            result->on_error_cb = on_error_cb;
             result->error_cb_ctx = error_cb_ctx;
             result->maxPingRespTime = DEFAULT_MAX_PING_RESPONSE_TIME;
             if ((result->packetTickCntr = tickcounter_create()) == NULL)
@@ -1023,7 +1023,7 @@ MQTT_CLIENT_HANDLE mqtt_client_v5_create(ON_MQTT_MESSAGE_RECV_CALLBACK msgRecv, 
     return result;
 }
 
-void mqtt_client_v5_destroy(MQTT_CLIENT_HANDLE handle)
+void mqtt_client_v5_destroy(MQTT_CLIENT_V5_HANDLE handle)
 {
     /*Codes_SRS_MQTT_CLIENT_07_004: [If the parameter handle is NULL then function mqtt_client_deinit shall do nothing.]*/
     if (handle != NULL)
@@ -1037,7 +1037,7 @@ void mqtt_client_v5_destroy(MQTT_CLIENT_HANDLE handle)
     }
 }
 
-int mqtt_client_v5_connect(MQTT_CLIENT_HANDLE handle, XIO_HANDLE xioHandle, MQTT_CLIENT_OPTIONS* mqttOptions)
+int mqtt_client_v5_connect(MQTT_CLIENT_V5_HANDLE handle, XIO_HANDLE xioHandle, MQTT_CLIENT_OPTIONS* mqttOptions)
 {
     int result;
     /*SRS_MQTT_CLIENT_07_006: [If any of the parameters handle, ioHandle, or mqttOptions are NULL then mqtt_client_connect shall return a non-zero value.]*/
@@ -1078,7 +1078,7 @@ int mqtt_client_v5_connect(MQTT_CLIENT_HANDLE handle, XIO_HANDLE xioHandle, MQTT
     return result;
 }
 
-int mqtt_client_v5_publish(MQTT_CLIENT_HANDLE handle, MQTT_MESSAGE_HANDLE msgHandle)
+int mqtt_client_v5_publish(MQTT_CLIENT_V5_HANDLE handle, MQTT_MESSAGE_HANDLE msgHandle)
 {
     int result;
     MQTT_CLIENT_V5* mqtt_client = (MQTT_CLIENT_V5*)handle;
@@ -1137,7 +1137,7 @@ int mqtt_client_v5_publish(MQTT_CLIENT_HANDLE handle, MQTT_MESSAGE_HANDLE msgHan
     return result;
 }
 
-int mqtt_client_v5_subscribe(MQTT_CLIENT_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count)
+int mqtt_client_v5_subscribe(MQTT_CLIENT_V5_HANDLE handle, uint16_t packetId, SUBSCRIBE_PAYLOAD* subscribeList, size_t count)
 {
     int result;
     MQTT_CLIENT_V5* mqtt_client = (MQTT_CLIENT_V5*)handle;
@@ -1179,7 +1179,7 @@ int mqtt_client_v5_subscribe(MQTT_CLIENT_HANDLE handle, uint16_t packetId, SUBSC
     return result;
 }
 
-int mqtt_client_v5_unsubscribe(MQTT_CLIENT_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count)
+int mqtt_client_v5_unsubscribe(MQTT_CLIENT_V5_HANDLE handle, uint16_t packetId, const char** unsubscribeList, size_t count)
 {
     int result;
     MQTT_CLIENT_V5* mqtt_client = (MQTT_CLIENT_V5*)handle;
@@ -1227,7 +1227,7 @@ int mqtt_client_v5_unsubscribe(MQTT_CLIENT_HANDLE handle, uint16_t packetId, con
     return result;
 }
 
-int mqtt_client_v5_disconnect(MQTT_CLIENT_HANDLE handle, ON_MQTT_DISCONNECTED_CALLBACK callback, void* ctx)
+int mqtt_client_v5_disconnect(MQTT_CLIENT_V5_HANDLE handle, ON_MQTT_DISCONNECTED_CALLBACK callback, void* ctx)
 {
     int result;
     MQTT_CLIENT_V5* mqtt_client = (MQTT_CLIENT_V5*)handle;
@@ -1240,7 +1240,7 @@ int mqtt_client_v5_disconnect(MQTT_CLIENT_HANDLE handle, ON_MQTT_DISCONNECTED_CA
     {
         if (mqtt_client->clientConnected)
         {
-            BUFFER_HANDLE disconnectPacket = codec_v5_disconnect(mqtt_client->mqtt_codec_handle);
+            BUFFER_HANDLE disconnectPacket = codec_v5_disconnect(mqtt_client->mqtt_codec_handle, NULL);
             if (disconnectPacket == NULL)
             {
                 /*Codes_SRS_MQTT_CLIENT_07_011: [If any failure is encountered then mqtt_client_disconnect shall return a non-zero value.]*/
@@ -1290,7 +1290,7 @@ int mqtt_client_v5_disconnect(MQTT_CLIENT_HANDLE handle, ON_MQTT_DISCONNECTED_CA
     return result;
 }
 
-void mqtt_client_v5_dowork(MQTT_CLIENT_HANDLE handle)
+void mqtt_client_v5_dowork(MQTT_CLIENT_V5_HANDLE handle)
 {
     MQTT_CLIENT_V5* mqtt_client = (MQTT_CLIENT_V5*)handle;
     /*Codes_SRS_MQTT_CLIENT_18_001: [If the client is disconnected, mqtt_client_dowork shall do nothing.]*/
@@ -1314,7 +1314,7 @@ void mqtt_client_v5_dowork(MQTT_CLIENT_HANDLE handle)
                 if (mqtt_client->timeSincePing > 0 && ((current_ms - mqtt_client->timeSincePing)/1000) > mqtt_client->maxPingRespTime)
                 {
                     // We haven't gotten a ping response in the alloted time
-                    set_error_callback(mqtt_client, MQTT_CLIENT_NO_PING_RESPONSE);
+                    set_error_callback(mqtt_client, MQTT_V5_CLIENT_NO_PING_RESPONSE);
                     mqtt_client->timeSincePing = 0;
                     mqtt_client->packetSendTimeMs = 0;
                     mqtt_client->packetState = UNKNOWN_TYPE;
@@ -1345,7 +1345,7 @@ void mqtt_client_v5_dowork(MQTT_CLIENT_HANDLE handle)
     }
 }
 
-void mqtt_client_v5_set_trace(MQTT_CLIENT_HANDLE handle, bool traceOn, bool rawBytesOn)
+void mqtt_client_v5_set_trace(MQTT_CLIENT_V5_HANDLE handle, bool traceOn, bool rawBytesOn)
 {
     AZURE_UNREFERENCED_PARAMETER(handle);
     AZURE_UNREFERENCED_PARAMETER(traceOn);

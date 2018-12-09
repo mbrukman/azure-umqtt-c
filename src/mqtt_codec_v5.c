@@ -58,6 +58,8 @@ typedef struct PUBLISH_HEADER_INFO_TAG
 
 static int construct_message_properties(BUFFER_HANDLE conn_packet, MQTT_PROPERTY_HANDLE prop_handle)
 {
+    (void)prop_handle;
+    (void)conn_packet;
     int result = 0;
     return result;
 }

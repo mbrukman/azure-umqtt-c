@@ -64,6 +64,7 @@ set(source_c_files
     ./src/mqtt_codec_v5.c
     ./src/mqtt_codec_util.c
     ./src/mqtt_message.c
+    ./src/mqtt_properties.c
 )
 
 #these are the C headers
@@ -74,6 +75,7 @@ set(source_h_files
     ./inc/azure_umqtt_c/mqtt_codec_v5.h
     ./inc/azure_umqtt_c/mqttconst.h
     ./inc/azure_umqtt_c/mqtt_message.h
+    ./inc/azure_umqtt_c/mqtt_properties.h
 )
 
 #the following "set" statetement exports across the project a global variable called COMMON_INC_FOLDER that expands to whatever needs to included when using COMMON library
