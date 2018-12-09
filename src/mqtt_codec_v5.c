@@ -11,7 +11,6 @@
 #include "azure_c_shared_utility/xlogging.h"
 
 #include "azure_umqtt_c/mqtt_codec_v5.h"
-#include "azure_umqtt_c/mqtt_codec_info.h"
 
 #include <inttypes.h>
 
@@ -30,11 +29,10 @@
 #define PUBLISH_QOS_AT_LEAST_ONCE           0x2
 #define PUBLISH_QOS_RETAIN                  0x1
 
-#define PROTOCOL_NUMBER                     4
+#define PROTOCOL_NUMBER                     5
 #define CONN_FLAG_BYTE_OFFSET               7
 
 #define CONNECT_FIXED_HEADER_SIZE           2
-#define CONNECT_VARIABLE_HEADER_SIZE        10
 #define SUBSCRIBE_FIXED_HEADER_FLAG         0x2
 #define UNSUBSCRIBE_FIXED_HEADER_FLAG       0x2
 
@@ -56,6 +54,12 @@ typedef struct PUBLISH_HEADER_INFO_TAG
     const char* msgBuffer;
     QOS_VALUE qualityOfServiceValue;
 } PUBLISH_HEADER_INFO;
+
+static int construct_connect_properties(BUFFER_HANDLE conn_packet)
+{
+    int result = 0;
+    return result;
+}
 
 static void on_bytes_recv(void* context, const unsigned char* buffer, size_t size)
 {
@@ -99,17 +103,39 @@ void codec_v5_destroy(MQTT_CODEC_V5_HANDLE handle)
     }
 }
 
-BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_V5_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqttOptions)
+BUFFER_HANDLE codec_v5_connect(MQTT_CODEC_V5_HANDLE handle, const MQTT_CLIENT_OPTIONS* mqtt_options)
 {
     BUFFER_HANDLE result;
     /* Codes_SRS_MQTT_CODEC_07_008: [If the parameters mqttOptions is NULL then codec_v5_connect shall return a null value.] */
-    if (mqttOptions == NULL || handle == NULL)
+    if (mqtt_options == NULL || handle == NULL)
     {
         result = NULL;
     }
     else
     {
-        result = NULL;
+        if (handle->trace_func != NULL)
+        {
+            handle->trace_func(handle->trace_ctx, "CONNECT");
+        }
+
+        // Construct the variable header for the connect packet
+        if ((result = construct_connect_var_header(handle->trace_func, handle->trace_ctx, mqtt_options, PROTOCOL_NUMBER)) == NULL)
+        {
+            LogError("Failure creating variable header");
+        }
+        else if (construct_connect_properties(result) != 0)
+        {
+            LogError("Failure constructing connect properties");
+            BUFFER_delete(result);
+            result = NULL;
+        }
+        else if (construct_fixed_header(result, CONNECT_TYPE, 0) != 0)
+        {
+            /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
+            LogError("Failure constructing fixed");
+            BUFFER_delete(result);
+            result = NULL;
+        }
     }
     return result;
 }
@@ -126,6 +152,9 @@ BUFFER_HANDLE codec_v5_disconnect(MQTT_CODEC_V5_HANDLE handle, const DISCONNECT_
     }
     else
     {
+        uint8_t* iterator = BUFFER_u_char(result);
+        iterator[0] = DISCONNECT_TYPE;
+        iterator[1] = 0;
     }
     return result;
 }

@@ -11,7 +11,6 @@
 #include "azure_c_shared_utility/xlogging.h"
 
 #include "azure_umqtt_c/mqtt_codec_v3.h"
-#include "azure_umqtt_c/mqtt_codec_info.h"
 #include "azure_umqtt_c/mqtt_codec_util.h"
 
 #include <inttypes.h>
@@ -143,22 +142,15 @@ static int constructConnectVariableHeader(CODEC_V3_INSTANCE* mqtt_codec, BUFFER_
     else
     {
         uint8_t* iterator = BUFFER_u_char(ctrlPacket);
-        if (iterator == NULL)
+        if (mqtt_codec->trace_func != NULL)
         {
-            result = __FAILURE__;
+            mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | VER: %d | KEEPALIVE: %d", PROTOCOL_NUMBER, mqttOptions->keepAliveInterval);
         }
-        else
-        {
-            if (mqtt_codec->trace_func != NULL)
-            {
-                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | VER: %d | KEEPALIVE: %d", PROTOCOL_NUMBER, mqttOptions->keepAliveInterval);
-            }
-            byteutil_writeUTF(&iterator, "MQTT", 4);
-            byteutil_writeByte(&iterator, PROTOCOL_NUMBER);
-            byteutil_writeByte(&iterator, 0); // Flags will be entered later
-            byteutil_writeInt(&iterator, mqttOptions->keepAliveInterval);
-            result = 0;
-        }
+        byteutil_writeUTF(&iterator, "MQTT", 4);
+        byteutil_writeByte(&iterator, PROTOCOL_NUMBER);
+        byteutil_writeByte(&iterator, 0); // Flags will be entered later
+        byteutil_writeInt(&iterator, mqttOptions->keepAliveInterval);
+        result = 0;
     }
     return result;
 }
@@ -515,36 +507,29 @@ BUFFER_HANDLE codec_v3_connect(MQTT_CODEC_V3_HANDLE handle, const MQTT_CLIENT_OP
     {
         CODEC_V3_INSTANCE* mqtt_codec = (CODEC_V3_INSTANCE*)handle;
         /* Codes_SRS_MQTT_CODEC_07_009: [mqtt_codec_connect shall construct a BUFFER_HANDLE that represents a MQTT CONNECT packet.] */
-        result = BUFFER_new();
-        if (result != NULL)
+        if (mqtt_codec->trace_func != NULL)
         {
-            if (mqtt_codec->trace_func != NULL)
-            {
-                mqtt_codec->trace_func(mqtt_codec->trace_ctx, "CONNECT");
-            }
+            mqtt_codec->trace_func(mqtt_codec->trace_ctx, "CONNECT");
+        }
 
-            // Add Variable Header Information
-            if (constructConnectVariableHeader(mqtt_codec, result, mqttOptions) != 0)
-            {
-                LogError("Failure constructing variable header");
-                /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
-                BUFFER_delete(result);
-                result = NULL;
-            }
-            else if (constructConnPayload(mqtt_codec, result, mqttOptions) != 0)
-            {
-                /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
-                LogError("Failure constructing payload");
-                BUFFER_delete(result);
-                result = NULL;
-            }
-            else if (construct_fixed_header(result, CONNECT_TYPE, 0) != 0)
-            {
-                /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
-                LogError("Failure constructing fixed");
-                BUFFER_delete(result);
-                result = NULL;
-            }
+        // Construct the variable header for the connect packet
+        if ((result = construct_connect_var_header(mqtt_codec->trace_func, mqtt_codec->trace_ctx, mqttOptions, PROTOCOL_NUMBER)) == NULL)
+        {
+            LogError("Failure creating variable header");
+        }
+        else if (constructConnPayload(mqtt_codec, result, mqttOptions) != 0)
+        {
+            /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
+            LogError("Failure constructing payload");
+            BUFFER_delete(result);
+            result = NULL;
+        }
+        else if (construct_fixed_header(result, CONNECT_TYPE, 0) != 0)
+        {
+            /* Codes_SRS_MQTT_CODEC_07_010: [If any error is encountered then mqtt_codec_connect shall return NULL.] */
+            LogError("Failure constructing fixed");
+            BUFFER_delete(result);
+            result = NULL;
         }
     }
     return result;
