@@ -363,18 +363,13 @@ static int constructConnPayload(CODEC_V3_INSTANCE* mqtt_codec, BUFFER_HANDLE ctr
                         mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | PWD: XXXX");
                     }
                 }
-                // TODO: Get the rest of the flags
-                if (mqtt_codec->trace_func != NULL)
-                {
-                    mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | CLEAN: %s", mqttOptions->useCleanSession ? "1" : "0");
-                }
                 if (mqttOptions->useCleanSession)
                 {
                     packet[CONN_FLAG_BYTE_OFFSET] |= CLEAN_SESSION_FLAG;
                 }
                 if (mqtt_codec->trace_func != NULL)
                 {
-                    mqtt_codec->trace_func(mqtt_codec->trace_ctx, "  | FLAGS: %ul", packet[CONN_FLAG_BYTE_OFFSET]);
+                    mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | CLEAN: %s | FLAGS: %lu", mqttOptions->useCleanSession ? "1" : "0"), (unsigned int)packet[CONN_FLAG_BYTE_OFFSET];
                 }
                 result = 0;
             }
