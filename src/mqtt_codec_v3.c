@@ -636,7 +636,7 @@ BUFFER_HANDLE codec_v3_publish(MQTT_CODEC_V3_HANDLE handle, QOS_VALUE qosValue, 
                             (void)memcpy(iterator, msgBuffer, buffLen);
                             if (mqtt_codec->trace_func != NULL)
                             {
-                                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | PAYLOAD_LEN: %zu", buffLen);
+                                mqtt_codec->trace_func(mqtt_codec->trace_ctx, " | PAYLOAD_LEN: %lu", (unsigned long)buffLen);
                             }
                         }
                     }
