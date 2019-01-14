@@ -654,7 +654,7 @@ static void ProcessPublishMessage(MQTT_CLIENT* mqtt_client, uint8_t* initialPos,
                 if (mqtt_client->logTrace)
                 {
                     STRING_sprintf(trace_log, " | PAYLOAD_LEN: %lu", (unsigned long)numberOfBytesToBeRead);
-                    log_incoming_trace(mqtt_client, trace_log);
+                    log_incoming_trace(mqtt_client, STRING_c_str(trace_log));
                 }
 #endif
                 mqtt_client->fnMessageRecv(msgHandle, mqtt_client->ctx);
