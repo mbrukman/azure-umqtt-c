@@ -45,7 +45,9 @@ set(run_unittests OFF)
 
 include("dependencies.cmake")
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/umock-c)
+if (NOT TARGET umock_c)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/umock-c)
+endif()
 include_directories(${UMOCK_C_INC_FOLDER})
 
 if (${original_run_e2e_tests} OR ${original_run_unittests})
@@ -61,6 +63,7 @@ if (${original_run_e2e_tests} OR ${original_run_unittests})
 
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/testrunnerswitcher)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/ctest)
+    add_subdirectory(deps/azure-c-shared-utility)
 endif ()
 
 set(use_cppunittest ON)
