@@ -15,7 +15,7 @@ set(GENERIC_LIB_VERSION ${UMQTT_VERSION})
 string(SUBSTRING ${UMQTT_VERSION} 0 1 GENERIC_LIB_SOVERSION)
 
 # Include the common build rules for the C SDK
-include(deps/c-utility/configs/azure_iot_build_rules.cmake)
+include(${SHARED_UTIL_FOLDER}/configs/azure_iot_build_rules.cmake)
 
 include(ExternalProject)
 
@@ -45,8 +45,11 @@ set(run_unittests OFF)
 
 include("dependencies.cmake")
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/umock-c)
+include_directories(${UMOCK_C_INC_FOLDER})
+
 if (${original_run_e2e_tests} OR ${original_run_unittests})
-    set(SHARED_UTIL_REAL_TEST_FOLDER ${CMAKE_CURRENT_LIST_DIR}/deps/c-utility/tests/real_test_files CACHE INTERNAL "this is what needs to be included when doing test sources" FORCE)
+    set(SHARED_UTIL_REAL_TEST_FOLDER ${SHARED_UTIL_FOLDER}/tests/real_test_files CACHE INTERNAL "this is what needs to be included when doing test sources" FORCE)
 
     #Clone the test submodules if needed
     if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/testrunnerswitcher/CMakeLists.txt")
@@ -56,16 +59,12 @@ if (${original_run_e2e_tests} OR ${original_run_unittests})
         execute_process(COMMAND git clone https://github.com/Azure/azure-ctest.git -q --no-tags ${CMAKE_CURRENT_SOURCE_DIR}/deps/ctest)
     endif()
 
-    #include("dependencies-test.cmake")
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/umock-c)
-    include_directories(${UMOCK_C_INC_FOLDER})
-
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/testrunnerswitcher)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/ctest)
 endif ()
 
 set(use_cppunittest ON)
-set_platform_files(${CMAKE_CURRENT_LIST_DIR}/deps/c-utility)
+set_platform_files(${SHARED_UTIL_FOLDER})
 
 set(run_e2e_tests ${original_run_e2e_tests})
 set(run_unittests ${original_run_unittests})
@@ -107,9 +106,7 @@ endif ()
 add_library(umqtt ${source_c_files} ${source_h_files})
 setTargetBuildProperties(umqtt)
 
-set(SHARED_UTIL_ADAPTER_FOLDER "${CMAKE_CURRENT_LIST_DIR}/deps/c-utility/adapters")
-
-set_platform_files(${CMAKE_CURRENT_LIST_DIR}/deps/c-utility)
+set(SHARED_UTIL_ADAPTER_FOLDER "${SHARED_UTIL_FOLDER}/adapters")
 
 target_link_libraries(umqtt aziotsharedutil)
 if (NOT WIN32)
