@@ -47,7 +47,21 @@ include("dependencies.cmake")
 
 if (${original_run_e2e_tests} OR ${original_run_unittests})
     set(SHARED_UTIL_REAL_TEST_FOLDER ${CMAKE_CURRENT_LIST_DIR}/deps/c-utility/tests/real_test_files CACHE INTERNAL "this is what needs to be included when doing test sources" FORCE)
-    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/deps/c-utility/testtools)
+
+    #Clone the test submodules if needed
+    if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/testrunnerswitcher/CMakeLists.txt")
+        execute_process(COMMAND git clone https://github.com/Azure/azure-c-testrunnerswitcher.git -q --no-tags ${CMAKE_CURRENT_SOURCE_DIR}/deps/testrunnerswitcher)
+    endif()
+    if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/ctest/CMakeLists.txt")
+        execute_process(COMMAND git clone https://github.com/Azure/azure-ctest.git -q --no-tags ${CMAKE_CURRENT_SOURCE_DIR}/deps/ctest)
+    endif()
+
+    #include("dependencies-test.cmake")
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/umock-c)
+    include_directories(${UMOCK_C_INC_FOLDER})
+
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/testrunnerswitcher)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/ctest)
 endif ()
 
 set(use_cppunittest ON)
