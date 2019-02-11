@@ -43,7 +43,9 @@ set(original_run_unittests ${run_unittests})
 set(run_e2e_tests OFF)
 set(run_unittests OFF)
 
-include("dependencies.cmake")
+if (NOT TARGET aziotsharedutil)
+    add_subdirectory(./deps/c-utility EXCLUDE_FROM_ALL)
+endif()
 
 if (NOT TARGET umock_c)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/umock-c)
@@ -65,6 +67,8 @@ if (${original_run_e2e_tests} OR ${original_run_unittests})
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/ctest)
     add_subdirectory(deps/azure-c-shared-utility)
 endif ()
+
+include("dependencies.cmake")
 
 set(use_cppunittest ON)
 set_platform_files(${SHARED_UTIL_FOLDER})
