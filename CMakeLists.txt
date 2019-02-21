@@ -44,7 +44,7 @@ set(run_e2e_tests OFF)
 set(run_unittests OFF)
 
 if (NOT TARGET aziotsharedutil)
-    add_subdirectory(./deps/c-utility EXCLUDE_FROM_ALL)
+    include("dependencies.cmake")
 endif()
 
 if (NOT TARGET umock_c)
@@ -65,10 +65,7 @@ if (${original_run_e2e_tests} OR ${original_run_unittests})
 
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/testrunnerswitcher)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/ctest)
-    add_subdirectory(deps/c-utility)
 endif ()
-
-include("dependencies.cmake")
 
 set(use_cppunittest ON)
 set_platform_files(${SHARED_UTIL_FOLDER})
