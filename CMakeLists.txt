@@ -14,9 +14,6 @@ FILE(READ ${CMAKE_CURRENT_LIST_DIR}/version.txt UMQTT_VERSION)
 set(GENERIC_LIB_VERSION ${UMQTT_VERSION})
 string(SUBSTRING ${UMQTT_VERSION} 0 1 GENERIC_LIB_SOVERSION)
 
-# Include the common build rules for the C SDK
-include(${SHARED_UTIL_FOLDER}/configs/azure_iot_build_rules.cmake)
-
 include(ExternalProject)
 
 #the following variables are project-wide and can be used with cmake-gui
@@ -46,6 +43,8 @@ set(run_unittests OFF)
 if (NOT TARGET aziotsharedutil)
     include("dependencies.cmake")
 endif()
+# Include the common build rules for the C SDK
+include(${SHARED_UTIL_FOLDER}/configs/azure_iot_build_rules.cmake)
 
 if (NOT TARGET umock_c)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/umock-c)
