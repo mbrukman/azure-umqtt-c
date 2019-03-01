@@ -6,6 +6,8 @@
 
 set -e
 
+git submodule update --init
+
 cat /etc/*release | grep VERSION*
 gcc --version
 openssl version

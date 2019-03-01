@@ -5,6 +5,8 @@
 
 # Tested on RPi2 debian verion 7.8
 
+git submodule update --init
+
 install_root="/home/jenkins" 
 build_root=$(cd "$(dirname "$0")/.." && pwd) 
 cd $build_root
