@@ -40,16 +40,17 @@ set(original_run_unittests ${run_unittests})
 set(run_e2e_tests OFF)
 set(run_unittests OFF)
 
-if (NOT TARGET aziotsharedutil)
-    include("dependencies.cmake")
-endif()
-# Include the common build rules for the C SDK
-include(${SHARED_UTIL_FOLDER}/configs/azure_iot_build_rules.cmake)
-
 if (NOT TARGET umock_c)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/umock-c)
 endif()
 include_directories(${UMOCK_C_INC_FOLDER})
+
+if (NOT TARGET aziotsharedutil)
+    include("dependencies.cmake")
+endif()
+
+# Include the common build rules for the C SDK
+include(${SHARED_UTIL_FOLDER}/configs/azure_iot_build_rules.cmake)
 
 if (${original_run_e2e_tests} OR ${original_run_unittests})
     set(SHARED_UTIL_REAL_TEST_FOLDER ${SHARED_UTIL_FOLDER}/tests/real_test_files CACHE INTERNAL "this is what needs to be included when doing test sources" FORCE)
